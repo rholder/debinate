@@ -2,20 +2,16 @@
 Debinate let's you roll your very own Python projects with a bunch of weird
 dependencies into little standalone Debian packages you can install into `/opt`.
 It's not meant to be a highly customizable packager with every option available
-under the sun.
+under the sun but instead to just hit the low-hanging fruit of packaging Python
+applications to ease installation.
 
 ##Installation
 
  * Install [fpm](https://github.com/jordansissel/fpm), the greatest package builder ever created.
- * Drop the latest version of `debinate` into your $PATH, with something like:
+ * Drop the latest version of `debinate` into your $PATH, set it executable, and make sure you own `/opt`:
 
 ```bash
-curl -o /usr/local/bin/debinate https://raw.github.com/rholder/debinate/master/debinate
- ```
- * Be the owner of `/opt`:
-
-```bash
-  sudo chown $USER:$USER /opt
+sudo curl -o /usr/local/bin/debinate https://raw.github.com/rholder/debinate/master/debinate && sudo chmod +x /usr/local/bin/debinate && sudo chown $USER:$USER /opt
 ```
 
 ##Use
