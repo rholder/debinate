@@ -1,0 +1,159 @@
+#!/usr/bin/env bash
+
+# Copyright 2014 Ray Holder
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+set -e
+
+DEBINATE_VERSION=0.1.0
+PROVISIONING=.debinate
+BUILD=$PROVISIONING/build
+TARGET=$PROVISIONING/target
+
+# need fpm installed
+command -v fpm >/dev/null 2>&1 || { echo >&2 "This program needs fpm, but it's not installed. Aborting."; exit 1; }
+
+# delete everything that can be rebuilt
+if [ "$1" == "clean" ]; then
+    echo "Cleaning out $TARGET"
+    rm -rfv $TARGET
+    echo "Cleaning out $BUILD"
+    rm -rfv $BUILD/*.deb
+    echo "Done."
+    exit 0
+fi
+
+# create all post/pre hooks and a root folder
+if [ "$1" == "init" ]; then
+    if [ -d "$PROVISIONING" ]; then
+        echo "Debinate files already exist in $PROVISIONING, unable to initialize."
+        exit 1
+    fi
+    echo "Initializing project..."
+    mkdir -p $PROVISIONING/root
+    mkdir -p $BUILD
+    echo -e "#!/bin/bash\n\necho Debinate package installed." > $PROVISIONING/after_install.sh
+    echo -e "#!/bin/bash\n\necho Debinate package removed." > $PROVISIONING/before_remove.sh
+    echo "Done."
+    exit 0
+fi
+
+# fall through to packaging if not clean or init
+if [ "$1" != "package" ]; then
+    echo "Debinate $DEBINATE_VERSION - roll up your Python as a Debian package"
+    echo ""
+    echo "  ${0##*/} init    - initialze a Debinate project structure in $PROVISIONING"
+    echo "  ${0##*/} package - creates a .deb file from your project in $TARGET"
+    echo "  ${0##*/} clean   - delete everything in the $TARGET folder"
+    echo ""
+    exit 1
+fi
+
+# use the current dir as the project name if unspecified
+if [ -z "$PROJECT_NAME"]; then
+    PROJECT_NAME="${PWD##*/}"
+fi
+
+# use the 1.0.0 as the version if unspecified
+if [ -z "$VERSION" ]; then
+    VERSION="1.0.0"
+fi
+
+# sanity check existence of .provisioning
+if [ ! -d "$PROVISIONING" ]; then
+    echo "Could not find $PROVISIONING directory."
+    exit 1
+fi
+
+# sanity check existence of .provisioning/root
+if [ ! -d "$PROVISIONING/root" ]; then
+    echo "Could not find $PROVISIONING/root directory."
+    exit 1
+fi
+
+# sanity check existence of .provisioning/after_install.sh
+if [ ! -f "$PROVISIONING/after_install.sh" ]; then
+    echo "Could not find $PROVISIONING/after_install.sh."
+    exit 1
+fi
+
+# sanity check existence of .provisioning/before_remove.sh
+if [ ! -f "$PROVISIONING/before_remove.sh" ]; then
+    echo "Could not find $PROVISIONING/before_remove.sh."
+    exit 1
+fi
+
+# sanity check existence of existing final .deb
+FINAL_PROJECT_DEB="$BUILD/$PROJECT_NAME-$VERSION.deb"
+if [ -f "$FINAL_PROJECT_DEB" ]; then
+    echo "$FINAL_PROJECT_DEB already exists."
+    exit 1
+fi
+
+# use /tmp/pip_cache if unspecified
+if [ -z "$PIP_CACHE" ]; then
+    PIP_CACHE="/tmp/pip_cache"
+fi
+
+TARGET_PROJECT_DIR="/opt/$PROJECT_NAME"
+TARGET_VIRTUAL_ENV="$TARGET_PROJECT_DIR/.virtualenv"
+echo Building $PROJECT_NAME - $VERSION
+
+rm -rf "$TARGET"
+rm -rf "$TARGET_VIRTUAL_ENV"
+mkdir -p "$TARGET_VIRTUAL_ENV"
+virtualenv --no-site-packages --distribute "$TARGET_VIRTUAL_ENV"
+source "$TARGET_VIRTUAL_ENV/bin/activate"
+
+# use the cache unless you like redownloading things
+# TODO don't hardcode distribute version, add as parameter
+pip install --download-cache "$PIP_CACHE" distribute==0.7.3
+pip install --download-cache "$PIP_CACHE" ./
+deactivate
+
+mkdir -p "$TARGET/$TARGET_VIRTUAL_ENV"
+mv "$TARGET_VIRTUAL_ENV" "$TARGET/$TARGET_VIRTUAL_ENV/.."
+
+# clean up the original project dir
+rmdir "$TARGET_PROJECT_DIR"
+
+# copy over root folder mirror, anything you needed
+rsync -av "$PROVISIONING/root/" "$TARGET"
+
+# copy project files here
+mkdir -p "$TARGET/opt/$PROJECT_NAME"
+
+# TODO we don't actually need this at all once everything is installed
+# grab the entire contents of this project, excluding the build-y bits
+#rsync -av ./ "$TARGET/opt/$PROJECT_NAME" --exclude "$TARGET" --exclude "$PROVISIONING"
+
+# TODO generalize this to a Debian dependency list file
+fpm -s dir -t deb -n "$PROJECT_NAME" -v "$VERSION" \
+--prefix / \
+-d "build-essential" \
+-d "python" \
+-d "python-pip" \
+-d "python-dev" \
+-d "libxml2-dev" \
+-d "libxslt1-dev" \
+-d "curl" \
+-d "libcurl4-gnutls-dev" \
+-d "libmysqlclient-dev" \
+--directories "/opt/$PROJECT_NAME" \
+--after-install "$PROVISIONING/after_install.sh" \
+--before-remove "$PROVISIONING/before_remove.sh" \
+--deb-user root \
+--deb-group root \
+-p "$FINAL_PROJECT_DEB" \
+-C $TARGET .
