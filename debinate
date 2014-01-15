@@ -43,6 +43,7 @@ if [ "$1" == "init" ]; then
     echo "Initializing project..."
     mkdir -p $PROVISIONING/root
     mkdir -p $BUILD
+    echo "python" > $PROVISIONING/depends
     echo -e "#!/bin/bash\n\necho Debinate package installed." > $PROVISIONING/after_install.sh
     echo -e "#!/bin/bash\n\necho Debinate package removed." > $PROVISIONING/before_remove.sh
     echo "Done."
@@ -134,18 +135,9 @@ rsync -av "$PROVISIONING/root/" "$TARGET"
 # copy project files here
 mkdir -p "$TARGET/opt/$PROJECT_NAME"
 
-# TODO generalize this to a Debian dependency list file
+# use depends file for Debian system dependencies
 fpm -s dir -t deb -n "$PROJECT_NAME" -v "$VERSION" \
---prefix / \
--d "build-essential" \
--d "python" \
--d "python-pip" \
--d "python-dev" \
--d "libxml2-dev" \
--d "libxslt1-dev" \
--d "curl" \
--d "libcurl4-gnutls-dev" \
--d "libmysqlclient-dev" \
+--prefix / `sed 's/^/-d /g' $PROVISIONING/depends` \
 --directories "/opt/$PROJECT_NAME" \
 --after-install "$PROVISIONING/after_install.sh" \
 --before-remove "$PROVISIONING/before_remove.sh" \
