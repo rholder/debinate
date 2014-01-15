@@ -18,7 +18,7 @@ curl -o /usr/local/bin/debinate https://raw.github.com/rholder/debinate/master/d
   sudo chown $USER:$USER /opt
 ```
 
-## Use
+##Use
 Create a `setup.py` for your project that isn't too crazy. If you can install
 it via a `pip install ./` then you're probably good to go. Here's one to get
 you started that has a bunch of stuff in it:
@@ -63,7 +63,7 @@ This will create some empty boilerplate that you can customize.
 
 Package up your project:
 ```
-debinate package - creates a .deb file from your project in .debinate/target
+debinate package
 ```
 
 If you don't like what was built, you can clean out the build directories and
