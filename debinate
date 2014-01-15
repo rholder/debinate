@@ -134,10 +134,6 @@ rsync -av "$PROVISIONING/root/" "$TARGET"
 # copy project files here
 mkdir -p "$TARGET/opt/$PROJECT_NAME"
 
-# TODO we don't actually need this at all once everything is installed
-# grab the entire contents of this project, excluding the build-y bits
-#rsync -av ./ "$TARGET/opt/$PROJECT_NAME" --exclude "$TARGET" --exclude "$PROVISIONING"
-
 # TODO generalize this to a Debian dependency list file
 fpm -s dir -t deb -n "$PROJECT_NAME" -v "$VERSION" \
 --prefix / \
