@@ -53,7 +53,7 @@ setup_options = dict(
 setup(**setup_options)
 ```
 
-Initalize the .debinate project structure from the top level of your project:
+Initialize the .debinate project structure from the top level of your project:
 ```
 debinate init
 ```

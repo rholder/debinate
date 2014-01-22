@@ -16,7 +16,7 @@
 
 set -e
 
-DEBINATE_VERSION=0.1.2
+DEBINATE_VERSION=0.1.3
 PROVISIONING=.debinate
 BUILD=$PROVISIONING/build
 TARGET=$PROVISIONING/target
@@ -41,11 +41,11 @@ if [ "$1" == "init" ]; then
         exit 1
     fi
     echo "Initializing project..."
-    mkdir -p $PROVISIONING/root
-    mkdir -p $BUILD
-    echo "python" > $PROVISIONING/depends
-    echo -e "#!/bin/bash\n\necho Debinate package installed." > $PROVISIONING/after_install.sh
-    echo -e "#!/bin/bash\n\necho Debinate package removed." > $PROVISIONING/before_remove.sh
+    mkdir -p "$PROVISIONING/root"
+    mkdir -p "$BUILD"
+    echo "python" > "$PROVISIONING/depends"
+    echo -e "#!/bin/bash\n\necho Debinate package installed." > "$PROVISIONING/after_install.sh"
+    echo -e "#!/bin/bash\n\necho Debinate package removed." > "$PROVISIONING/before_remove.sh"
     echo "Done."
     exit 0
 fi
@@ -64,7 +64,7 @@ if [ "$1" != "package" ]; then
 fi
 
 # use the current dir as the project name if unspecified
-if [ -z "$PROJECT_NAME"]; then
+if [ -z "$PROJECT_NAME" ]; then
     PROJECT_NAME="${PWD##*/}"
 fi
 
@@ -73,25 +73,25 @@ if [ -z "$VERSION" ]; then
     VERSION="1.0.0"
 fi
 
-# sanity check existence of .provisioning
+# sanity check existence of .debinate
 if [ ! -d "$PROVISIONING" ]; then
     echo "Could not find $PROVISIONING directory."
     exit 1
 fi
 
-# sanity check existence of .provisioning/root
+# sanity check existence of .debinate/root
 if [ ! -d "$PROVISIONING/root" ]; then
     echo "Could not find $PROVISIONING/root directory."
     exit 1
 fi
 
-# sanity check existence of .provisioning/after_install.sh
+# sanity check existence of .debinate/after_install.sh
 if [ ! -f "$PROVISIONING/after_install.sh" ]; then
     echo "Could not find $PROVISIONING/after_install.sh."
     exit 1
 fi
 
-# sanity check existence of .provisioning/before_remove.sh
+# sanity check existence of .debinate/before_remove.sh
 if [ ! -f "$PROVISIONING/before_remove.sh" ]; then
     echo "Could not find $PROVISIONING/before_remove.sh."
     exit 1
@@ -126,8 +126,8 @@ pip install --download-cache "$PIP_CACHE" distribute==0.7.3
 pip install --download-cache "$PIP_CACHE" ./
 deactivate
 
-mkdir -p "$TARGET/$TARGET_VIRTUAL_ENV"
-mv "$TARGET_VIRTUAL_ENV" "$TARGET/$TARGET_VIRTUAL_ENV/.."
+mkdir -p "$TARGET$TARGET_PROJECT_DIR"
+mv "$TARGET_VIRTUAL_ENV/" "$TARGET$TARGET_PROJECT_DIR"
 
 # clean up the original project dir
 rmdir "$TARGET_PROJECT_DIR"
