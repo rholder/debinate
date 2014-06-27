@@ -7,7 +7,7 @@ applications to ease installation.
 
 ##Installation
 
- * Install [fpm](https://github.com/jordansissel/fpm), the greatest package builder ever created.
+ * Install [fpm](https://github.com/jordansissel/fpm), the greatest package builder ever created (or grab [jfpm](https://github.com/rholder/jfpm) if you'd rather not fiddle with Ruby).
  * Drop the latest version of `debinate` into your $PATH, set it executable, and make sure you own `/opt`:
 
 ```bash
