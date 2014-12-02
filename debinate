@@ -115,22 +115,38 @@ echo Building $PROJECT_NAME - $VERSION
 
 mkdir -p "$BUILD"
 rm -rf "$TARGET"
-rm -rf "$TARGET_VIRTUAL_ENV"
-mkdir -p "$TARGET_VIRTUAL_ENV"
-virtualenv --no-site-packages --distribute "$TARGET_VIRTUAL_ENV"
-source "$TARGET_VIRTUAL_ENV/bin/activate"
+
+if [ -z "${USE_VIRTUAL_ENV_CACHE}" ]; then
+    echo "Clearing any virtualenv in ${TARGET_VIRTUAL_ENV}"
+    rm -rf "${TARGET_VIRTUAL_ENV}"
+else
+    echo "Using existing virtualenv in ${TARGET_VIRTUAL_ENV}"
+fi
+
+mkdir -p "${TARGET_VIRTUAL_ENV}"
+virtualenv --no-site-packages --distribute "${TARGET_VIRTUAL_ENV}"
+source "${TARGET_VIRTUAL_ENV}/bin/activate"
 
 # use the cache unless you like redownloading things
 # TODO don't hardcode distribute version, add as parameter
-pip install --download-cache "$PIP_CACHE" distribute==0.7.3
-pip install --download-cache "$PIP_CACHE" ./
+pip install --download-cache "${PIP_CACHE}" distribute==0.7.3
+pip install --download-cache "${PIP_CACHE}" ./
 deactivate
 
-mkdir -p "$TARGET$TARGET_PROJECT_DIR"
-mv "$TARGET_VIRTUAL_ENV/" "$TARGET$TARGET_PROJECT_DIR"
+mkdir -p "${TARGET}${TARGET_PROJECT_DIR}"
+if [ -z "${USE_VIRTUAL_ENV_CACHE}" ]; then
+    echo "Moving virtualenv"
+    mv "${TARGET_VIRTUAL_ENV}/" "${TARGET}${TARGET_PROJECT_DIR}"
+else
+    echo "Using cached virtualenv from ${TARGET_VIRTUAL_ENV}"
+    rsync -av "${TARGET_VIRTUAL_ENV}/" "${TARGET}${TARGET_PROJECT_DIR}"
+fi
 
-# clean up the original project dir
-rmdir "$TARGET_PROJECT_DIR"
+# clean up the original project dir when not using cached virtualenv
+if [ -z "${USE_VIRTUAL_ENV_CACHE}" ]; then
+    echo "Cleaning up target project directory ${TARGET_PROJECT_DIR}"
+    rmdir "${TARGET_PROJECT_DIR}"
+fi
 
 # copy over root folder mirror, anything you needed
 rsync -av "$PROVISIONING/root/" "$TARGET"
