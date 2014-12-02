@@ -16,47 +16,47 @@
 
 set -e
 
-DEBINATE_VERSION=0.1.3
+DEBINATE_VERSION=0.1.4-dev
 PROVISIONING=.debinate
-BUILD=$PROVISIONING/build
-TARGET=$PROVISIONING/target
+BUILD=${PROVISIONING}/build
+TARGET=${PROVISIONING}/target
 
 # need fpm installed
 command -v fpm >/dev/null 2>&1 || { echo >&2 "This program needs fpm, but it's not installed. Aborting."; exit 1; }
 
 # delete everything that can be rebuilt
 if [ "$1" == "clean" ]; then
-    echo "Cleaning out $TARGET"
-    rm -rfv $TARGET
-    echo "Cleaning out $BUILD"
-    rm -rfv $BUILD/*.deb
+    echo "Cleaning out ${TARGET}"
+    rm -rfv ${TARGET}
+    echo "Cleaning out ${BUILD}"
+    rm -rfv ${BUILD}/*.deb
     echo "Done."
     exit 0
 fi
 
 # create all post/pre hooks and a root folder
 if [ "$1" == "init" ]; then
-    if [ -d "$PROVISIONING" ]; then
-        echo "Debinate files already exist in $PROVISIONING, unable to initialize."
+    if [ -d "${PROVISIONING}" ]; then
+        echo "Debinate files already exist in ${PROVISIONING}, unable to initialize."
         exit 1
     fi
     echo "Initializing project..."
-    mkdir -p "$PROVISIONING/root"
-    mkdir -p "$BUILD"
-    echo "python" > "$PROVISIONING/depends"
-    echo -e "#!/bin/bash\n\necho Debinate package installed." > "$PROVISIONING/after_install.sh"
-    echo -e "#!/bin/bash\n\necho Debinate package removed." > "$PROVISIONING/before_remove.sh"
+    mkdir -p "${PROVISIONING}/root"
+    mkdir -p "${BUILD}"
+    echo "python" > "${PROVISIONING}/depends"
+    echo -e "#!/bin/bash\n\necho Debinate package installed." > "${PROVISIONING}/after_install.sh"
+    echo -e "#!/bin/bash\n\necho Debinate package removed." > "${PROVISIONING}/before_remove.sh"
     echo "Done."
     exit 0
 fi
 
 # fall through to packaging if not clean or init
 if [ "$1" != "package" ]; then
-    echo "Debinate $DEBINATE_VERSION - roll up your Python as a Debian package"
+    echo "Debinate ${DEBINATE_VERSION} - roll up your Python as a Debian package"
     echo ""
-    echo "  ${0##*/} init    - initialze a Debinate project structure in $PROVISIONING"
-    echo "  ${0##*/} package - creates a .deb file from your project in $BUILD"
-    echo "  ${0##*/} clean   - delete everything in the $TARGET and $BUILD folders"
+    echo "  ${0##*/} init    - initialze a Debinate project structure in ${PROVISIONING}"
+    echo "  ${0##*/} package - creates a .deb file from your project in ${BUILD}"
+    echo "  ${0##*/} clean   - delete everything in the ${TARGET} and ${BUILD} folders"
     echo ""
     echo "You can find the latest version and file bugs at https://github.com/rholder/debinate."
     echo ""
@@ -64,57 +64,57 @@ if [ "$1" != "package" ]; then
 fi
 
 # use the current dir as the project name if unspecified
-if [ -z "$PROJECT_NAME" ]; then
+if [ -z "${PROJECT_NAME}" ]; then
     PROJECT_NAME="${PWD##*/}"
 fi
 
 # use the 1.0.0 as the version if unspecified
-if [ -z "$VERSION" ]; then
+if [ -z "${VERSION}" ]; then
     VERSION="1.0.0"
 fi
 
 # sanity check existence of .debinate
-if [ ! -d "$PROVISIONING" ]; then
-    echo "Could not find $PROVISIONING directory."
+if [ ! -d "${PROVISIONING}" ]; then
+    echo "Could not find ${PROVISIONING} directory."
     exit 1
 fi
 
 # sanity check existence of .debinate/root
-if [ ! -d "$PROVISIONING/root" ]; then
-    echo "Could not find $PROVISIONING/root directory."
+if [ ! -d "${PROVISIONING}/root" ]; then
+    echo "Could not find ${PROVISIONING}/root directory."
     exit 1
 fi
 
 # sanity check existence of .debinate/after_install.sh
-if [ ! -f "$PROVISIONING/after_install.sh" ]; then
-    echo "Could not find $PROVISIONING/after_install.sh."
+if [ ! -f "${PROVISIONING}/after_install.sh" ]; then
+    echo "Could not find ${PROVISIONING}/after_install.sh."
     exit 1
 fi
 
 # sanity check existence of .debinate/before_remove.sh
-if [ ! -f "$PROVISIONING/before_remove.sh" ]; then
-    echo "Could not find $PROVISIONING/before_remove.sh."
+if [ ! -f "${PROVISIONING}/before_remove.sh" ]; then
+    echo "Could not find ${PROVISIONING}/before_remove.sh."
     exit 1
 fi
 
 # sanity check existence of existing final .deb
-FINAL_PROJECT_DEB="$BUILD/$PROJECT_NAME-$VERSION.deb"
-if [ -f "$FINAL_PROJECT_DEB" ]; then
-    echo "$FINAL_PROJECT_DEB already exists."
+FINAL_PROJECT_DEB="${BUILD}/${PROJECT_NAME}-${VERSION}.deb"
+if [ -f "${FINAL_PROJECT_DEB}" ]; then
+    echo "${FINAL_PROJECT_DEB} already exists."
     exit 1
 fi
 
 # use /tmp/pip_cache if unspecified
-if [ -z "$PIP_CACHE" ]; then
+if [ -z "${PIP_CACHE}" ]; then
     PIP_CACHE="/tmp/pip_cache"
 fi
 
-TARGET_PROJECT_DIR="/opt/$PROJECT_NAME"
-TARGET_VIRTUAL_ENV="$TARGET_PROJECT_DIR/.virtualenv"
-echo Building $PROJECT_NAME - $VERSION
+TARGET_PROJECT_DIR="/opt/${PROJECT_NAME}"
+TARGET_VIRTUAL_ENV="${TARGET_PROJECT_DIR}/.virtualenv"
+echo Building ${PROJECT_NAME} - ${VERSION}
 
-mkdir -p "$BUILD"
-rm -rf "$TARGET"
+mkdir -p "${BUILD}"
+rm -rf "${TARGET}"
 
 if [ -z "${USE_VIRTUAL_ENV_CACHE}" ]; then
     echo "Clearing any virtualenv in ${TARGET_VIRTUAL_ENV}"
@@ -149,18 +149,18 @@ if [ -z "${USE_VIRTUAL_ENV_CACHE}" ]; then
 fi
 
 # copy over root folder mirror, anything you needed
-rsync -av "$PROVISIONING/root/" "$TARGET"
+rsync -av "${PROVISIONING}/root/" "${TARGET}"
 
 # copy project files here
-mkdir -p "$TARGET/opt/$PROJECT_NAME"
+mkdir -p "${TARGET}/opt/${PROJECT_NAME}"
 
 # use depends file for Debian system dependencies
-fpm -s dir -t deb -n "$PROJECT_NAME" -v "$VERSION" \
---prefix / `sed 's/^/-d /g' $PROVISIONING/depends` \
---directories "/opt/$PROJECT_NAME" \
---after-install "$PROVISIONING/after_install.sh" \
---before-remove "$PROVISIONING/before_remove.sh" \
+fpm -s dir -t deb -n "${PROJECT_NAME}" -v "${VERSION}" \
+--prefix / `sed 's/^/-d /g' ${PROVISIONING}/depends` \
+--directories "/opt/${PROJECT_NAME}" \
+--after-install "${PROVISIONING}/after_install.sh" \
+--before-remove "${PROVISIONING}/before_remove.sh" \
 --deb-user root \
 --deb-group root \
--p "$FINAL_PROJECT_DEB" \
--C $TARGET .
+-p "${FINAL_PROJECT_DEB}" \
+-C "${TARGET}" .
