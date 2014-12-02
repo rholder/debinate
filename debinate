@@ -124,7 +124,7 @@ else
 fi
 
 mkdir -p "${TARGET_VIRTUAL_ENV}"
-virtualenv --no-site-packages --distribute "${TARGET_VIRTUAL_ENV}"
+virtualenv --distribute "${TARGET_VIRTUAL_ENV}"
 source "${TARGET_VIRTUAL_ENV}/bin/activate"
 
 # use the cache unless you like redownloading things
