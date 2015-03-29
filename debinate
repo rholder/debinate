@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2014 Ray Holder
+# Copyright 2014-2015 Ray Holder
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,28 +14,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e
+set -o errexit
+set -o pipefail
 
-DEBINATE_VERSION=0.1.4
-PROVISIONING=.debinate
-BUILD=${PROVISIONING}/build
-TARGET=${PROVISIONING}/target
+readonly DEBINATE=${0##*/}
+readonly DEBINATE_VERSION=0.2.0-dev
+readonly PROVISIONING=.debinate
+readonly BUILD=${PROVISIONING}/build
+readonly TARGET=${PROVISIONING}/target
 
-# need fpm installed
-command -v fpm >/dev/null 2>&1 || { echo >&2 "This program needs fpm, but it's not installed. Aborting."; exit 1; }
+# project name defaults to project directory if unset
+readonly PROJECT_BASE_DIR="${PWD##*/}"
+readonly PROJECT_NAME="${PROJECT_NAME:-$PROJECT_BASE_DIR}"
 
-# delete everything that can be rebuilt
-if [ "$1" == "clean" ]; then
-    echo "Cleaning out ${TARGET}"
-    rm -rfv ${TARGET}
-    echo "Cleaning out ${BUILD}"
-    rm -rfv ${BUILD}/*.deb
-    echo "Done."
-    exit 0
-fi
+# version defaults to 1.0.0 if unset
+readonly VERSION="${VERSION:-1.0.0}"
+
+# print usage information and exit
+function usage () {
+        cat << EOF
+Debinate ${DEBINATE_VERSION} - roll up your Python as a Debian package
+
+  ${DEBINATE} init    - create and initialize a Debinate project structure in ${PROVISIONING}
+  ${DEBINATE} package - creates a .deb file from your project in ${BUILD}
+  ${DEBINATE} clean   - delete everything in the ${TARGET} and ${BUILD} folders
+
+You can find the latest version and file bugs at https://github.com/rholder/debinate.
+
+EOF
+    exit 1
+}
 
 # create all post/pre hooks and a root folder
-if [ "$1" == "init" ]; then
+function init () {
     if [ -d "${PROVISIONING}" ]; then
         echo "Debinate files already exist in ${PROVISIONING}, unable to initialize."
         exit 1
@@ -48,119 +59,230 @@ if [ "$1" == "init" ]; then
     echo -e "#!/bin/bash\n\necho Debinate package removed." > "${PROVISIONING}/before_remove.sh"
     echo "Done."
     exit 0
-fi
+}
 
-# fall through to packaging if not clean or init
-if [ "$1" != "package" ]; then
-    echo "Debinate ${DEBINATE_VERSION} - roll up your Python as a Debian package"
-    echo ""
-    echo "  ${0##*/} init    - initialze a Debinate project structure in ${PROVISIONING}"
-    echo "  ${0##*/} package - creates a .deb file from your project in ${BUILD}"
-    echo "  ${0##*/} clean   - delete everything in the ${TARGET} and ${BUILD} folders"
-    echo ""
-    echo "You can find the latest version and file bugs at https://github.com/rholder/debinate."
-    echo ""
-    exit 1
-fi
+# create the target Python package with a virtualenv
+function package () {
+    # use /tmp/pip_cache if unspecified
+    if [ -z "${PIP_CACHE}" ]; then
+        PIP_CACHE="/tmp/pip_cache"
+    fi
 
-# use the current dir as the project name if unspecified
-if [ -z "${PROJECT_NAME}" ]; then
-    PROJECT_NAME="${PWD##*/}"
-fi
+    TARGET_PROJECT_DIR="/opt/${PROJECT_NAME}"
+    TARGET_VIRTUAL_ENV="${TARGET_PROJECT_DIR}/.virtualenv"
+    echo Building ${PROJECT_NAME} - ${VERSION}
 
-# use the 1.0.0 as the version if unspecified
-if [ -z "${VERSION}" ]; then
-    VERSION="1.0.0"
-fi
+    mkdir -p "${BUILD}"
+    rm -rf "${TARGET}"
 
-# sanity check existence of .debinate
-if [ ! -d "${PROVISIONING}" ]; then
-    echo "Could not find ${PROVISIONING} directory."
-    exit 1
-fi
+    if [ -z "${USE_VIRTUAL_ENV_CACHE}" ]; then
+        echo "Clearing any virtualenv in ${TARGET_VIRTUAL_ENV}"
+        rm -rf "${TARGET_VIRTUAL_ENV}"
+    else
+        echo "Using existing virtualenv in ${TARGET_VIRTUAL_ENV}"
+    fi
 
-# sanity check existence of .debinate/root
-if [ ! -d "${PROVISIONING}/root" ]; then
-    echo "Could not find ${PROVISIONING}/root directory."
-    exit 1
-fi
+    mkdir -p "${TARGET_VIRTUAL_ENV}"
+    virtualenv --distribute "${TARGET_VIRTUAL_ENV}"
+    source "${TARGET_VIRTUAL_ENV}/bin/activate"
 
-# sanity check existence of .debinate/after_install.sh
-if [ ! -f "${PROVISIONING}/after_install.sh" ]; then
-    echo "Could not find ${PROVISIONING}/after_install.sh."
-    exit 1
-fi
+    # use the cache unless you like redownloading things
+    # TODO don't hardcode distribute version, add as parameter
+    pip install --download-cache "${PIP_CACHE}" distribute==0.7.3
+    pip install --download-cache "${PIP_CACHE}" ./
+    deactivate
 
-# sanity check existence of .debinate/before_remove.sh
-if [ ! -f "${PROVISIONING}/before_remove.sh" ]; then
-    echo "Could not find ${PROVISIONING}/before_remove.sh."
-    exit 1
-fi
+    mkdir -p "${TARGET}${TARGET_PROJECT_DIR}"
+    if [ -z "${USE_VIRTUAL_ENV_CACHE}" ]; then
+        echo "Moving virtualenv"
+        mv "${TARGET_VIRTUAL_ENV}/" "${TARGET}${TARGET_PROJECT_DIR}"
+    else
+        echo "Using cached virtualenv from ${TARGET_VIRTUAL_ENV}"
+        rsync -av "${TARGET_VIRTUAL_ENV}/" "${TARGET}${TARGET_PROJECT_DIR}"
+    fi
 
-# sanity check existence of existing final .deb
-FINAL_PROJECT_DEB="${BUILD}/${PROJECT_NAME}-${VERSION}.deb"
-if [ -f "${FINAL_PROJECT_DEB}" ]; then
-    echo "${FINAL_PROJECT_DEB} already exists."
-    exit 1
-fi
+    # clean up the original project dir when not using cached virtualenv
+    if [ -z "${USE_VIRTUAL_ENV_CACHE}" ]; then
+        echo "Cleaning up target project directory ${TARGET_PROJECT_DIR}"
+        rmdir "${TARGET_PROJECT_DIR}"
+    fi
 
-# use /tmp/pip_cache if unspecified
-if [ -z "${PIP_CACHE}" ]; then
-    PIP_CACHE="/tmp/pip_cache"
-fi
+    # copy over root folder mirror, anything you needed
+    rsync -av "${PROVISIONING}/root/" "${TARGET}"
 
-TARGET_PROJECT_DIR="/opt/${PROJECT_NAME}"
-TARGET_VIRTUAL_ENV="${TARGET_PROJECT_DIR}/.virtualenv"
-echo Building ${PROJECT_NAME} - ${VERSION}
+    # copy project files here
+    mkdir -p "${TARGET}/opt/${PROJECT_NAME}"
+}
 
-mkdir -p "${BUILD}"
-rm -rf "${TARGET}"
+# delete everything that can be rebuilt
+function clean () {
+    echo "Cleaning out ${TARGET}"
+    rm -rfv ${TARGET}
+    echo "Cleaning out ${BUILD}"
+    rm -rfv ${BUILD}
+    echo "Done."
+    exit 0
+}
 
-if [ -z "${USE_VIRTUAL_ENV_CACHE}" ]; then
-    echo "Clearing any virtualenv in ${TARGET_VIRTUAL_ENV}"
-    rm -rf "${TARGET_VIRTUAL_ENV}"
-else
-    echo "Using existing virtualenv in ${TARGET_VIRTUAL_ENV}"
-fi
+# check that all the required programs are available
+function check_environment () {
+    local programs=(ar find sort xargs tar md5sum virtualenv)
+    for program in "${programs[@]}"; do
+        check_program_exists "$program"
+    done
+}
 
-mkdir -p "${TARGET_VIRTUAL_ENV}"
-virtualenv --distribute "${TARGET_VIRTUAL_ENV}"
-source "${TARGET_VIRTUAL_ENV}/bin/activate"
+# bail out if given program doesn't exist
+function check_program_exists () {
+    if [ ! -x "$(which ${1})" ]; then
+        echo "Environment Error: ${1} not found on the path or not executable"
+        exit 1
+    fi
+}
 
-# use the cache unless you like redownloading things
-# TODO don't hardcode distribute version, add as parameter
-pip install --download-cache "${PIP_CACHE}" distribute==0.7.3
-pip install --download-cache "${PIP_CACHE}" ./
-deactivate
+# change to the target directory and recursively take the md5sum of everything
+function generate_md5sums () {
+    local target_dir="$1"
+    pushd "${target_dir}" > /dev/null
+    find . -type f -printf '%P\0' | LC_ALL=C sort -z | xargs -r0 md5sum
+    popd > /dev/null
+}
 
-mkdir -p "${TARGET}${TARGET_PROJECT_DIR}"
-if [ -z "${USE_VIRTUAL_ENV_CACHE}" ]; then
-    echo "Moving virtualenv"
-    mv "${TARGET_VIRTUAL_ENV}/" "${TARGET}${TARGET_PROJECT_DIR}"
-else
-    echo "Using cached virtualenv from ${TARGET_VIRTUAL_ENV}"
-    rsync -av "${TARGET_VIRTUAL_ENV}/" "${TARGET}${TARGET_PROJECT_DIR}"
-fi
+# generate control file dependency line from newline separated file
+function generate_depends () {
+    sed '/^\s*$/d' "$1" | xargs | sed 's/ /, /g'
+}
 
-# clean up the original project dir when not using cached virtualenv
-if [ -z "${USE_VIRTUAL_ENV_CACHE}" ]; then
-    echo "Cleaning up target project directory ${TARGET_PROJECT_DIR}"
-    rmdir "${TARGET_PROJECT_DIR}"
-fi
+# generate a minimal Debian control file
+function generate_control () {
+    local project_name=$1
+    local version=$2
+    local vendor=$3
+    local depends=$4
 
-# copy over root folder mirror, anything you needed
-rsync -av "${PROVISIONING}/root/" "${TARGET}"
+    cat << EOF
+Package: ${project_name}
+Version: ${version}
+License: unknown
+Vendor: ${vendor}
+Architecture: amd64
+Maintainer: <root@localhost>
+Depends: ${depends}
+Section: default
+Priority: extra
+Homepage: http://example.com/no-uri-given
+Description: no description given
+EOF
+}
 
-# copy project files here
-mkdir -p "${TARGET}/opt/${PROJECT_NAME}"
+# copy a script if it exists and set it to executable
+function copy_script () {
+    local source_file=$1
+    local target_file=$2
+    if [ -f "${source_file}" ]; then
+        cp "${source_file}" "${target_file}"
+        chmod +x "${target_file}"
+    fi
+}
 
-# use depends file for Debian system dependencies
-fpm -s dir -t deb -n "${PROJECT_NAME}" -v "${VERSION}" \
---prefix / `sed 's/^/-d /g' ${PROVISIONING}/depends` \
---directories "/opt/${PROJECT_NAME}" \
---after-install "${PROVISIONING}/after_install.sh" \
---before-remove "${PROVISIONING}/before_remove.sh" \
---deb-user root \
---deb-group root \
--p "${FINAL_PROJECT_DEB}" \
--C "${TARGET}" .
+# generate a Debian package archive
+function generate_deb () {
+    local project_name=$1
+    local version=$2
+    local vendor=$3
+    local provision_dir=$4
+    local deb_file=$5
+
+    local depends_file="${provision_dir}/depends"
+    local build_dir="${provision_dir}/build"
+    local target_dir="${provision_dir}/target"
+
+    # control archive files are staged here
+    local debian_dir="${build_dir}/DEBIAN"
+    mkdir -p "${debian_dir}"
+
+    # copy these things even if they don't exist
+    copy_script "${provision_dir}/before_install.sh" "${debian_dir}/preinst"
+    copy_script "${provision_dir}/after_install.sh" "${debian_dir}/postinst"
+    copy_script "${provision_dir}/before_remove.sh" "${debian_dir}/prerm"
+    copy_script "${provision_dir}/after_remove.sh" "${debian_dir}/postrm"
+
+    # create Debian control archive
+    generate_md5sums "${target_dir}" > "${debian_dir}/md5sums"
+    
+    # use an existing Debian control file if it exists
+    if [ -f "${provision_dir}/control" ]; then
+        cp "${provision_dir}/control" "${debian_dir}/control"
+    else
+        # otherwise generate it from the minimal template
+        generate_control "${project_name}" "${version}" "${vendor}" "$(generate_depends ${depends_file})" > "${debian_dir}/control"
+    fi
+
+    tar czf "${build_dir}/control.tar.gz" --numeric-owner --owner=0 --group=0 -C "${debian_dir}" --ignore-failed-read control md5sums preinst postinst prerm postrm 2>/dev/null
+
+    # create Debian data archive from target dir
+    tar czf "${build_dir}/data.tar.gz" --numeric-owner --owner=0 --group=0 -C "${target_dir}" .
+
+    # create Debian version file
+    echo "2.0" > "${build_dir}/debian-binary"
+
+    # create final Debian package
+    ar cr "${deb_file}" "${build_dir}/debian-binary" "${build_dir}/control.tar.gz" "${build_dir}/data.tar.gz"
+    echo "Debian archive ${deb_file} was generated successfully."
+}
+
+# run sanity checks to validate project structure
+function sanity_check_package () {
+    # sanity check existence of .debinate
+    if [ ! -d "${PROVISIONING}" ]; then
+        echo "Could not find ${PROVISIONING} directory."
+        exit 1
+    fi
+
+    # sanity check existence of .debinate/root
+    if [ ! -d "${PROVISIONING}/root" ]; then
+        echo "Could not find ${PROVISIONING}/root directory."
+        exit 1
+    fi
+
+    # sanity check existence of .debinate/after_install.sh
+    if [ ! -f "${PROVISIONING}/after_install.sh" ]; then
+        echo "Could not find ${PROVISIONING}/after_install.sh."
+        exit 1
+    fi
+
+    # sanity check existence of .debinate/before_remove.sh
+    if [ ! -f "${PROVISIONING}/before_remove.sh" ]; then
+        echo "Could not find ${PROVISIONING}/before_remove.sh."
+        exit 1
+    fi
+
+    # sanity check existence of existing final .deb
+    local final_project_deb="${BUILD}/${PROJECT_NAME}-${VERSION}.deb"
+    if [ -f "${final_project_deb}" ]; then
+        echo "${final_project_deb} already exists."
+        exit 1
+    fi
+}
+
+function main () {
+    check_environment
+    case "$1" in
+        init)
+            init
+        ;;
+        clean)
+            clean
+        ;;
+        package)
+            sanity_check_package
+            package
+            generate_deb "${PROJECT_NAME}" "${VERSION}" "${VENDOR}" "${PROVISIONING}" "${BUILD}/${PROJECT_NAME}-${VERSION}.deb"
+        ;;
+        *)
+            usage
+        ;;
+    esac
+}
+
+main $1
