@@ -209,7 +209,7 @@ function generate_deb () {
 
     # create Debian control archive
     generate_md5sums "${target_dir}" > "${debian_dir}/md5sums"
-    
+
     # use an existing Debian control file if it exists
     if [ -f "${provision_dir}/control" ]; then
         cp "${provision_dir}/control" "${debian_dir}/control"
@@ -285,4 +285,7 @@ function main () {
     esac
 }
 
-main $1
+# skip running the main function, suitable for sourcing, testing, etc.
+if [ "$1" != "--skip-main" ]; then
+    main $1
+fi
