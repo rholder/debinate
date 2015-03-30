@@ -1,3 +1,5 @@
+[![Build Status](http://img.shields.io/travis/rholder/debinate.svg)](https://travis-ci.org/rholder/debinate) [![Latest Version](http://img.shields.io/badge/latest-0.1.4-brightgreen.svg)](https://github.com/rholder/debinate/releases/tag/v0.1.4) [![License](http://img.shields.io/badge/license-apache%202-brightgreen.svg)](https://github.com/rholder/debinate/blob/master/LICENSE)
+
 ##What is this?
 Debinate let's you roll your very own Python projects with a bunch of weird
 dependencies into little standalone Debian packages you can install into `/opt`.
