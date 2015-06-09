@@ -23,6 +23,9 @@ readonly PROVISIONING=.debinate
 readonly BUILD=${PROVISIONING}/build
 readonly TARGET=${PROVISIONING}/target
 
+# install prefix defaults to /opt if unset
+readonly DEBINATE_INSTALL_PREFIX="${DEBINATE_INSTALL_PREFIX:-/opt}"
+
 # project name defaults to project directory if unset
 readonly PROJECT_BASE_DIR="${PWD##*/}"
 readonly PROJECT_NAME="${PROJECT_NAME:-$PROJECT_BASE_DIR}"
@@ -68,7 +71,7 @@ function package () {
         PIP_CACHE="/tmp/pip_cache"
     fi
 
-    TARGET_PROJECT_DIR="/opt/${PROJECT_NAME}"
+    TARGET_PROJECT_DIR="${DEBINATE_INSTALL_PREFIX}/${PROJECT_NAME}"
     TARGET_VIRTUAL_ENV="${TARGET_PROJECT_DIR}/.virtualenv"
     echo Building ${PROJECT_NAME} - ${VERSION}
 
@@ -109,9 +112,6 @@ function package () {
 
     # copy over root folder mirror, anything you needed
     rsync -av "${PROVISIONING}/root/" "${TARGET}"
-
-    # copy project files here
-    mkdir -p "${TARGET}/opt/${PROJECT_NAME}"
 }
 
 # delete everything that can be rebuilt
