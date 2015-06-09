@@ -12,7 +12,7 @@ applications to ease installation.
  * Drop the latest version of `debinate` into your $PATH, set it executable, and make sure you own `/opt`:
 
 ```bash
-sudo curl -o /usr/local/bin/debinate -L https://github.com/rholder/debinate/releases/download/v0.1.4/debinate && \
+sudo curl -o /usr/local/bin/debinate -L https://github.com/rholder/debinate/releases/download/v0.2.0/debinate && \
 sudo chmod +x /usr/local/bin/debinate && \
 sudo chown $USER:$USER /opt
 ```
