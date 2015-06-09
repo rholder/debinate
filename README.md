@@ -1,4 +1,4 @@
-[![Build Status](http://img.shields.io/travis/rholder/debinate.svg)](https://travis-ci.org/rholder/debinate) [![Latest Version](http://img.shields.io/badge/latest-0.1.4-brightgreen.svg)](https://github.com/rholder/debinate/releases/tag/v0.1.4) [![License](http://img.shields.io/badge/license-apache%202-brightgreen.svg)](https://github.com/rholder/debinate/blob/master/LICENSE)
+[![Build Status](http://img.shields.io/travis/rholder/debinate.svg)](https://travis-ci.org/rholder/debinate) [![Latest Version](http://img.shields.io/badge/latest-0.2.0-brightgreen.svg)](https://github.com/rholder/debinate/releases/tag/v0.2.0) [![License](http://img.shields.io/badge/license-apache%202-brightgreen.svg)](https://github.com/rholder/debinate/blob/master/LICENSE)
 
 ##What is this?
 Debinate let's you roll your very own Python projects with a bunch of weird
@@ -9,7 +9,6 @@ applications to ease installation.
 
 ##Installation
 
- * Install [fpm](https://github.com/jordansissel/fpm), the greatest package builder ever created (or grab [jfpm](https://github.com/rholder/jfpm) if you'd rather not fiddle with Ruby).
  * Drop the latest version of `debinate` into your $PATH, set it executable, and make sure you own `/opt`:
 
 ```bash
