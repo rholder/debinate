@@ -86,7 +86,7 @@ function package () {
     fi
 
     mkdir -p "${TARGET_VIRTUAL_ENV}"
-    virtualenv --distribute "${TARGET_VIRTUAL_ENV}"
+    virtualenv --python="$(which python)" --distribute "${TARGET_VIRTUAL_ENV}"
     source "${TARGET_VIRTUAL_ENV}/bin/activate"
 
     # use the cache unless you like redownloading things
