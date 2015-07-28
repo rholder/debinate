@@ -18,7 +18,7 @@ set -o errexit
 set -o pipefail
 
 readonly DEBINATE=${0##*/}
-readonly DEBINATE_VERSION=0.2.0
+readonly DEBINATE_VERSION=0.2.1
 readonly PROVISIONING=.debinate
 readonly BUILD=${PROVISIONING}/build
 readonly TARGET=${PROVISIONING}/target
