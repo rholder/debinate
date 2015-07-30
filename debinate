@@ -18,7 +18,7 @@ set -o errexit
 set -o pipefail
 
 readonly DEBINATE=${0##*/}
-readonly DEBINATE_VERSION=0.2.1
+readonly DEBINATE_VERSION=0.2.2
 readonly PROVISIONING=.debinate
 readonly BUILD=${PROVISIONING}/build
 readonly TARGET=${PROVISIONING}/target
@@ -32,6 +32,9 @@ readonly PROJECT_NAME="${PROJECT_NAME:-$PROJECT_BASE_DIR}"
 
 # version defaults to 1.0.0 if unset
 readonly VERSION="${VERSION:-1.0.0}"
+
+# Python interpreter defaults to whatever is currently python
+readonly DEBINATE_PYTHON="${DEBINATE_PYTHON:-$(which python)}"
 
 # print usage information and exit
 function usage () {
@@ -86,7 +89,7 @@ function package () {
     fi
 
     mkdir -p "${TARGET_VIRTUAL_ENV}"
-    virtualenv --python="$(which python)" --distribute "${TARGET_VIRTUAL_ENV}"
+    virtualenv --python="${DEBINATE_PYTHON}" --distribute "${TARGET_VIRTUAL_ENV}"
     source "${TARGET_VIRTUAL_ENV}/bin/activate"
 
     # use the cache unless you like redownloading things
