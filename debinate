@@ -95,7 +95,16 @@ function package () {
     # use the cache unless you like redownloading things
     # TODO don't hardcode distribute version, add as parameter
     pip install --download-cache "${PIP_CACHE}" distribute==0.7.3
-    python setup.py install
+    if [ -f "requirements.txt" ];
+    then
+        echo "requirements.txt found, install dependencies first"
+        while read req; do
+          pip install $req
+        done <requirements.txt
+    else
+        echo "No requirements.txt, defaulting to pip install"
+    fi
+    pip install .
     deactivate
 
     mkdir -p "${TARGET}${TARGET_PROJECT_DIR}"
