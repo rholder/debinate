@@ -18,7 +18,7 @@ set -o errexit
 set -o pipefail
 
 readonly DEBINATE=${0##*/}
-readonly DEBINATE_VERSION=0.2.3
+readonly DEBINATE_VERSION=0.2.4
 readonly PROVISIONING=.debinate
 readonly BUILD=${PROVISIONING}/build
 readonly TARGET=${PROVISIONING}/target
@@ -95,11 +95,14 @@ function package () {
     # use the cache unless you like redownloading things
     # TODO don't hardcode distribute version, add as parameter
     pip install --download-cache "${PIP_CACHE}" distribute==0.7.3
-    if [ -f "requirements.txt" ];
-    then
-        echo "requirements.txt found, install dependencies first"
-        while read req; do
-          pip install $req
+    if [ -f "requirements.txt" ]; then
+        echo "Found requirements.txt, installing dependencies in order first..."
+        DONE_REQ=false
+        until $DONE_REQ; do
+            read || DONE_REQ=true
+            if [ -n "$REPLY" ]; then
+                pip install $REPLY
+            fi
         done <requirements.txt
     else
         echo "No requirements.txt, defaulting to pip install"
