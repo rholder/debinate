@@ -18,7 +18,7 @@ set -o errexit
 set -o pipefail
 
 readonly DEBINATE=${0##*/}
-readonly DEBINATE_VERSION=0.2.4
+readonly DEBINATE_VERSION=0.3.0dev
 readonly PROVISIONING=.debinate
 readonly BUILD=${PROVISIONING}/build
 readonly TARGET=${PROVISIONING}/target
@@ -69,11 +69,6 @@ function init () {
 
 # create the target Python package with a virtualenv
 function package () {
-    # use /tmp/pip_cache if unspecified
-    if [ -z "${PIP_CACHE}" ]; then
-        PIP_CACHE="/tmp/pip_cache"
-    fi
-
     TARGET_PROJECT_DIR="${DEBINATE_INSTALL_PREFIX}/${PROJECT_NAME}"
     TARGET_VIRTUAL_ENV="${TARGET_PROJECT_DIR}/.virtualenv"
     echo Building ${PROJECT_NAME} - ${VERSION}
@@ -92,9 +87,8 @@ function package () {
     virtualenv --python="${DEBINATE_PYTHON}" --distribute "${TARGET_VIRTUAL_ENV}"
     source "${TARGET_VIRTUAL_ENV}/bin/activate"
 
-    # use the cache unless you like redownloading things
     # TODO don't hardcode distribute version, add as parameter
-    pip install --download-cache "${PIP_CACHE}" distribute==0.7.3
+    pip install distribute==0.7.3
     if [ -f "requirements.txt" ]; then
         echo "Found requirements.txt, installing dependencies in order first..."
         DONE_REQ=false
