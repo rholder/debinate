@@ -22,6 +22,7 @@ readonly DEBINATE_VERSION=0.3.0dev
 readonly PROVISIONING=.debinate
 readonly BUILD=${PROVISIONING}/build
 readonly TARGET=${PROVISIONING}/target
+readonly DEBINATE_CACHE=${PROVISIONING}/cache
 
 # install prefix defaults to /opt if unset
 readonly DEBINATE_INSTALL_PREFIX="${DEBINATE_INSTALL_PREFIX:-/opt}"
@@ -43,7 +44,7 @@ Debinate ${DEBINATE_VERSION} - roll up your Python as a Debian package
 
   ${DEBINATE} init    - create and initialize a Debinate project structure in ${PROVISIONING}
   ${DEBINATE} package - creates a .deb file from your project in ${BUILD}
-  ${DEBINATE} clean   - delete everything in the ${TARGET} and ${BUILD} folders
+  ${DEBINATE} clean   - delete everything in the target, build, and cache folders
 
 You can find the latest version and file bugs at https://github.com/rholder/debinate.
 
@@ -81,8 +82,9 @@ function package () {
 
     if [ -f "requirements.txt" ]; then
         echo "Found requirements.txt, installing dependencies in order first..."
+        mkdir -p "${DEBINATE_CACHE}"
         local cache_key=($(md5sum requirements.txt))
-        local cache_file="${PROVISIONING}/cache-${cache_key[0]}.tar.gz"
+        local cache_file="${DEBINATE_CACHE}/virtualenv-${cache_key[0]}.tar.gz"
         if [ -f "${cache_file}" ]; then
             echo "Extracting cache file to ${TARGET_PROJECT_DIR}..."
             mkdir -p "${TARGET_PROJECT_DIR}"
@@ -133,11 +135,13 @@ function package () {
 
 # delete everything that can be rebuilt
 function clean () {
-    # TODO clean out caches
     echo "Cleaning out ${TARGET}"
     rm -rfv "${TARGET}"
     echo "Cleaning out ${BUILD}"
     rm -rfv "${BUILD}"
+    echo "Cleaning out ${DEBINATE_CACHE}"
+    rm -rfv "${DEBINATE_CACHE}"
+
     echo "Done."
     exit 0
 }
