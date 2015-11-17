@@ -79,24 +79,43 @@ function package () {
     echo "Clearing any virtualenv in ${TARGET_VIRTUAL_ENV}"
     rm -rf "${TARGET_VIRTUAL_ENV}"
 
-    mkdir -p "${TARGET_VIRTUAL_ENV}"
-    virtualenv --python="${DEBINATE_PYTHON}" --distribute "${TARGET_VIRTUAL_ENV}"
-    source "${TARGET_VIRTUAL_ENV}/bin/activate"
-
-    # TODO don't hardcode distribute version, add as parameter
-    pip install distribute==0.7.3
     if [ -f "requirements.txt" ]; then
         echo "Found requirements.txt, installing dependencies in order first..."
-        DONE_REQ=false
-        until $DONE_REQ; do
-            read || DONE_REQ=true
-            if [ -n "$REPLY" ]; then
-                pip install $REPLY
-            fi
-        done <requirements.txt
+        local cache_key=($(md5sum requirements.txt))
+        local cache_file="${PROVISIONING}/cache-${cache_key[0]}.tar.gz"
+        if [ -f "${cache_file}" ]; then
+            echo "Extracting cache file to ${TARGET_PROJECT_DIR}..."
+            mkdir -p "${TARGET_PROJECT_DIR}"
+            tar xzf "${cache_file}" -C "${TARGET_PROJECT_DIR}"
+            source "${TARGET_VIRTUAL_ENV}/bin/activate"
+        else
+            echo "Creating new virtualenv in ${TARGET_VIRTUAL_ENV}..."
+            mkdir -p "${TARGET_VIRTUAL_ENV}"
+            virtualenv --python="${DEBINATE_PYTHON}" --distribute "${TARGET_VIRTUAL_ENV}"
+            source "${TARGET_VIRTUAL_ENV}/bin/activate"
+
+            # TODO don't hardcode distribute version, add as parameter
+            pip install distribute==0.7.3
+            DONE_REQ=false
+            until $DONE_REQ; do
+                read || DONE_REQ=true
+                if [ -n "$REPLY" ]; then
+                    pip install $REPLY
+                fi
+            done <requirements.txt
+
+            # tar up the virtualenv before installing the project
+            echo "Saving virtualenv cache to ${cache_file}..."
+            tar czf "${cache_file}" -C "${TARGET_PROJECT_DIR}" ".virtualenv"
+        fi
     else
         echo "No requirements.txt, defaulting to pip install"
+        echo "Creating new virtualenv in ${TARGET_VIRTUAL_ENV}..."
+        mkdir -p "${TARGET_VIRTUAL_ENV}"
+        virtualenv --python="${DEBINATE_PYTHON}" --distribute "${TARGET_VIRTUAL_ENV}"
+        source "${TARGET_VIRTUAL_ENV}/bin/activate"
     fi
+
     pip install .
     deactivate
 
@@ -109,15 +128,16 @@ function package () {
     rmdir "${TARGET_PROJECT_DIR}"
 
     # copy over root folder mirror, anything you needed
-    rsync -av "${PROVISIONING}/root/" "${TARGET}"
+    rsync -a "${PROVISIONING}/root/" "${TARGET}"
 }
 
 # delete everything that can be rebuilt
 function clean () {
+    # TODO clean out caches
     echo "Cleaning out ${TARGET}"
-    rm -rfv ${TARGET}
+    rm -rfv "${TARGET}"
     echo "Cleaning out ${BUILD}"
-    rm -rfv ${BUILD}
+    rm -rfv "${BUILD}"
     echo "Done."
     exit 0
 }
