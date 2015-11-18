@@ -21,7 +21,7 @@ readonly DEBINATE=${0##*/}
 readonly DEBINATE_VERSION=0.3.0
 readonly PROVISIONING=.debinate
 readonly DEBINATE_BUILD=${PROVISIONING}/build
-readonly TARGET=${PROVISIONING}/target
+readonly DEBINATE_TARGET=${PROVISIONING}/target
 readonly DEBINATE_CACHE=${PROVISIONING}/cache
 
 # install prefix defaults to /opt if unset
@@ -74,7 +74,7 @@ function package () {
     TARGET_VIRTUAL_ENV="${TARGET_PROJECT_DIR}/.virtualenv"
     echo Building ${PROJECT_NAME} - ${VERSION}
 
-    rm -rf "${TARGET}"
+    rm -rf "${DEBINATE_TARGET}"
     rm -rf "${DEBINATE_BUILD}"
     mkdir -p "${DEBINATE_BUILD}"
 
@@ -122,22 +122,22 @@ function package () {
     pip install .
     deactivate
 
-    mkdir -p "${TARGET}${TARGET_PROJECT_DIR}"
+    mkdir -p "${DEBINATE_TARGET}${TARGET_PROJECT_DIR}"
     echo "Moving virtualenv"
-    mv "${TARGET_VIRTUAL_ENV}/" "${TARGET}${TARGET_PROJECT_DIR}"
+    mv "${TARGET_VIRTUAL_ENV}/" "${DEBINATE_TARGET}${TARGET_PROJECT_DIR}"
 
     # clean up the original project dir
     echo "Cleaning up target project directory ${TARGET_PROJECT_DIR}"
     rmdir "${TARGET_PROJECT_DIR}"
 
     # copy over root folder mirror, anything you needed
-    rsync -a "${PROVISIONING}/root/" "${TARGET}"
+    rsync -a "${PROVISIONING}/root/" "${DEBINATE_TARGET}"
 }
 
 # delete everything that can be rebuilt
 function clean () {
-    echo "Cleaning out ${TARGET}"
-    rm -rfv "${TARGET}"
+    echo "Cleaning out ${DEBINATE_TARGET}"
+    rm -rfv "${DEBINATE_TARGET}"
     echo "Cleaning out ${DEBINATE_BUILD}"
     rm -rfv "${DEBINATE_BUILD}"
     echo "Cleaning out ${DEBINATE_CACHE}"
