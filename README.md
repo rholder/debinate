@@ -1,4 +1,4 @@
-[![Build Status](http://img.shields.io/travis/rholder/debinate.svg)](https://travis-ci.org/rholder/debinate) [![Latest Version](http://img.shields.io/badge/latest-0.2.4-brightgreen.svg)](https://github.com/rholder/debinate/releases/tag/v0.2.4) [![License](http://img.shields.io/badge/license-apache%202-brightgreen.svg)](https://github.com/rholder/debinate/blob/master/LICENSE)
+[![Build Status](http://img.shields.io/travis/rholder/debinate.svg)](https://travis-ci.org/rholder/debinate) [![Latest Version](http://img.shields.io/badge/latest-0.3.0-brightgreen.svg)](https://github.com/rholder/debinate/releases/tag/v0.3.0) [![License](http://img.shields.io/badge/license-apache%202-brightgreen.svg)](https://github.com/rholder/debinate/blob/master/LICENSE)
 
 ##What is this?
 Debinate let's you roll your very own Python projects with a bunch of weird
@@ -12,7 +12,7 @@ applications to ease installation.
  * Drop the latest version of `debinate` into your $PATH, set it executable, and make sure you own `/opt`:
 
 ```bash
-sudo curl -o /usr/local/bin/debinate -L https://github.com/rholder/debinate/releases/download/v0.2.4/debinate && \
+sudo curl -o /usr/local/bin/debinate -L https://github.com/rholder/debinate/releases/download/v0.3.0/debinate && \
 sudo chmod +x /usr/local/bin/debinate && \
 sudo chown $USER:$USER /opt
 ```
