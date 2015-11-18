@@ -18,9 +18,9 @@ set -o errexit
 set -o pipefail
 
 readonly DEBINATE=${0##*/}
-readonly DEBINATE_VERSION=0.3.0dev
+readonly DEBINATE_VERSION=0.3.0
 readonly PROVISIONING=.debinate
-readonly BUILD=${PROVISIONING}/build
+readonly DEBINATE_BUILD=${PROVISIONING}/build
 readonly TARGET=${PROVISIONING}/target
 readonly DEBINATE_CACHE=${PROVISIONING}/cache
 
@@ -43,7 +43,7 @@ function usage () {
 Debinate ${DEBINATE_VERSION} - roll up your Python as a Debian package
 
   ${DEBINATE} init    - create and initialize a Debinate project structure in ${PROVISIONING}
-  ${DEBINATE} package - creates a .deb file from your project in ${BUILD}
+  ${DEBINATE} package - creates a .deb file from your project in ${DEBINATE_BUILD}
   ${DEBINATE} clean   - delete everything in the target, build, and cache folders
 
 You can find the latest version and file bugs at https://github.com/rholder/debinate.
@@ -60,7 +60,7 @@ function init () {
     fi
     echo "Initializing project..."
     mkdir -p "${PROVISIONING}/root"
-    mkdir -p "${BUILD}"
+    mkdir -p "${DEBINATE_BUILD}"
     echo "python" > "${PROVISIONING}/depends"
     echo -e "#!/bin/bash\n\necho Debinate package installed." > "${PROVISIONING}/after_install.sh"
     echo -e "#!/bin/bash\n\necho Debinate package removed." > "${PROVISIONING}/before_remove.sh"
@@ -75,8 +75,8 @@ function package () {
     echo Building ${PROJECT_NAME} - ${VERSION}
 
     rm -rf "${TARGET}"
-    rm -rf "${BUILD}"
-    mkdir -p "${BUILD}"
+    rm -rf "${DEBINATE_BUILD}"
+    mkdir -p "${DEBINATE_BUILD}"
 
     echo "Clearing any virtualenv in ${TARGET_VIRTUAL_ENV}"
     rm -rf "${TARGET_VIRTUAL_ENV}"
@@ -138,8 +138,8 @@ function package () {
 function clean () {
     echo "Cleaning out ${TARGET}"
     rm -rfv "${TARGET}"
-    echo "Cleaning out ${BUILD}"
-    rm -rfv "${BUILD}"
+    echo "Cleaning out ${DEBINATE_BUILD}"
+    rm -rfv "${DEBINATE_BUILD}"
     echo "Cleaning out ${DEBINATE_CACHE}"
     rm -rfv "${DEBINATE_CACHE}"
 
@@ -281,7 +281,7 @@ function sanity_check_package () {
     fi
 
     # sanity check existence of existing final .deb
-    local final_project_deb="${BUILD}/${PROJECT_NAME}-${VERSION}.deb"
+    local final_project_deb="${DEBINATE_BUILD}/${PROJECT_NAME}-${VERSION}.deb"
     if [ -f "${final_project_deb}" ]; then
         echo "${final_project_deb} already exists."
         exit 1
@@ -300,7 +300,7 @@ function main () {
         package)
             sanity_check_package
             package
-            generate_deb "${PROJECT_NAME}" "${VERSION}" "${VENDOR}" "${PROVISIONING}" "${BUILD}/${PROJECT_NAME}-${VERSION}.deb"
+            generate_deb "${PROJECT_NAME}" "${VERSION}" "${VENDOR}" "${PROVISIONING}" "${DEBINATE_BUILD}/${PROJECT_NAME}-${VERSION}.deb"
         ;;
         *)
             usage
