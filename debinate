@@ -74,8 +74,9 @@ function package () {
     TARGET_VIRTUAL_ENV="${TARGET_PROJECT_DIR}/.virtualenv"
     echo Building ${PROJECT_NAME} - ${VERSION}
 
-    mkdir -p "${BUILD}"
     rm -rf "${TARGET}"
+    rm -rf "${BUILD}"
+    mkdir -p "${BUILD}"
 
     echo "Clearing any virtualenv in ${TARGET_VIRTUAL_ENV}"
     rm -rf "${TARGET_VIRTUAL_ENV}"
