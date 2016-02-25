@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2014-2015 Ray Holder
+# Copyright 2014-2016 Ray Holder
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -208,7 +208,7 @@ Package: ${project_name}
 Version: ${version}
 License: unknown
 Vendor: ${vendor}
-Architecture: amd64
+Architecture: all
 Maintainer: <root@localhost>
 Depends: ${depends}
 Section: default
@@ -237,6 +237,20 @@ function fail_if_empty () {
         echo "${message_when_empty}"
         exit 1
     fi
+}
+
+# add a trailing slash to the given value or leave it alone if it doesn't have one
+function add_trailing_slash () {
+    local the_value="$1"
+
+    case "${the_value}" in
+        */) # do nothing if already ends in /
+        ;;
+        *)  # add a / if it doesn't end with one
+            the_value="${the_value}/"
+        ;;
+    esac
+    echo "${the_value}"
 }
 
 # parse commandline arguments and generate a Debian package archive
@@ -349,19 +363,14 @@ function generate_deb () {
     mkdir -p "${debian_dir}"
 
     # rsync needs a / at the end to make sure things copy over without the source dir
-    case "${deb_root}" in
-        */) # do nothing if already ends in /
-        ;;
-        *)  # add a / if it doesn't end with one
-            deb_root="${deb_root}/"
-        ;;
-    esac
+    deb_root=$(add_trailing_slash "${deb_root}")
 
     # copy over root folder mirror, anything you needed
     rsync -a "${deb_root}" "${target_dir}"
 
     # check for debian_custom_dir
     if [ -d "${debian_custom_dir}" ]; then
+        debian_custom_dir=$(add_trailing_slash "${debian_custom_dir}")
         rsync -a "${debian_custom_dir}" "${debian_dir}"
     fi
 
@@ -374,7 +383,9 @@ function generate_deb () {
         generate_control "${project_name}" "${project_version}" "unknown" "" > "${debian_dir}/control"
     fi
 
-    tar czf "${build_dir}/control.tar.gz" --numeric-owner --owner=0 --group=0 -C "${debian_dir}" --ignore-failed-read control md5sums preinst postinst prerm postrm 2>/dev/null
+    pushd "${debian_dir}" > /dev/null
+    tar czf "${build_dir}/control.tar.gz" --numeric-owner --owner=0 --group=0 * 2>/dev/null
+    popd > /dev/null
 
     # create Debian data archive from target dir
     tar czf "${build_dir}/data.tar.gz" --numeric-owner --owner=0 --group=0 -C "${target_dir}" .
