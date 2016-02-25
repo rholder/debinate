@@ -109,7 +109,7 @@ function package_python () {
         if [ -f "${cache_file}" ]; then
             echo "Extracting cache file to ${TARGET_PROJECT_DIR}..."
             mkdir -p "${TARGET_PROJECT_DIR}"
-            tar xzf "${cache_file}" -C "${TARGET_PROJECT_DIR}"
+            ${TAR} xzf "${cache_file}" -C "${TARGET_PROJECT_DIR}"
             source "${TARGET_VIRTUAL_ENV}/bin/activate"
         else
             echo "Creating new virtualenv in ${TARGET_VIRTUAL_ENV}..."
@@ -129,7 +129,7 @@ function package_python () {
 
             # tar up the virtualenv before installing the project
             echo "Saving virtualenv cache to ${cache_file}..."
-            tar czf "${cache_file}" -C "${TARGET_PROJECT_DIR}" ".virtualenv"
+            ${TAR} czf "${cache_file}" -C "${TARGET_PROJECT_DIR}" ".virtualenv"
         fi
     else
         echo "No requirements.txt, defaulting to pip install"
@@ -169,10 +169,30 @@ function clean () {
 
 # check that all the required programs are available
 function check_environment () {
-    local programs=(ar find sort xargs tar sed md5sum virtualenv rsync)
-    for program in "${programs[@]}"; do
-        check_program_exists "$program"
-    done
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # Mac OSX
+        local programs=(ar gfind sort gxargs gtar gmktemp sed gmd5sum virtualenv rsync)
+        for program in "${programs[@]}"; do
+            check_program_exists "$program"
+        done
+
+        # alias gnu versions for OSX
+        MD5SUM=gmd5sum
+        FIND=gfind
+        TAR=gtar
+        XARGS=gxargs
+        MKTEMP=gmktemp
+    else
+        local programs=(ar find sort xargs tar mktemp sed md5sum virtualenv rsync)
+        for program in "${programs[@]}"; do
+            check_program_exists "$program"
+        done
+        MD5SUM=md5sum
+        FIND=find
+        TAR=tar
+        XARGS=xargs
+        MKTEMP=mktemp
+    fi
 }
 
 # bail out if given program doesn't exist
@@ -187,13 +207,13 @@ function check_program_exists () {
 function generate_md5sums () {
     local target_dir="$1"
     pushd "${target_dir}" > /dev/null
-    find . -type f -printf '%P\0' | LC_ALL=C sort -z | xargs -r0 md5sum
+    ${FIND} . -type f -printf '%P\0' | LC_ALL=C sort -z | ${XARGS} -r0 ${MD5SUM}
     popd > /dev/null
 }
 
 # generate control file dependency line from newline separated file
 function generate_depends () {
-    sed '/^\s*$/d' "$1" | xargs | sed 's/ /, /g'
+    sed '/^\s*$/d' "$1" | ${XARGS} | sed 's/ /, /g'
 }
 
 # generate a minimal Debian control file
@@ -352,7 +372,7 @@ function generate_deb () {
     local debian_custom_dir=$4
     local deb_output=$5
 
-    local tmp_dir=$(mktemp -d)
+    local tmp_dir=$(${MKTEMP} -d)
     local build_dir="${tmp_dir}/build"
     local target_dir="${tmp_dir}/target"
 
@@ -384,11 +404,11 @@ function generate_deb () {
     fi
 
     pushd "${debian_dir}" > /dev/null
-    tar czf "${build_dir}/control.tar.gz" --numeric-owner --owner=0 --group=0 * 2>/dev/null
+    ${TAR} czf "${build_dir}/control.tar.gz" --numeric-owner --owner=0 --group=0 * 2>/dev/null
     popd > /dev/null
 
     # create Debian data archive from target dir
-    tar czf "${build_dir}/data.tar.gz" --numeric-owner --owner=0 --group=0 -C "${target_dir}" .
+    ${TAR} czf "${build_dir}/data.tar.gz" --numeric-owner --owner=0 --group=0 -C "${target_dir}" .
 
     # create Debian version file
     echo "2.0" > "${build_dir}/debian-binary"
@@ -432,10 +452,10 @@ function generate_deb_for_python () {
         generate_control "${project_name}" "${version}" "${vendor}" "$(generate_depends ${depends_file})" > "${debian_dir}/control"
     fi
 
-    tar czf "${build_dir}/control.tar.gz" --numeric-owner --owner=0 --group=0 -C "${debian_dir}" --ignore-failed-read control md5sums preinst postinst prerm postrm 2>/dev/null
+    ${TAR} czf "${build_dir}/control.tar.gz" --numeric-owner --owner=0 --group=0 -C "${debian_dir}" --ignore-failed-read control md5sums preinst postinst prerm postrm 2>/dev/null
 
     # create Debian data archive from target dir
-    tar czf "${build_dir}/data.tar.gz" --numeric-owner --owner=0 --group=0 -C "${target_dir}" .
+    ${TAR} czf "${build_dir}/data.tar.gz" --numeric-owner --owner=0 --group=0 -C "${target_dir}" .
 
     # create Debian version file
     echo "2.0" > "${build_dir}/debian-binary"
