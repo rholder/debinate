@@ -1,0 +1,12 @@
+Package: foo-everything-project
+Version: 12.0.1
+License: unknown
+Vendor: Potato
+Architecture: all
+Maintainer: <potato@example.com>
+Depends: python
+Section: default
+Priority: extra
+Homepage: http://example.com/no-uri-given
+Description: This is a foo.
+
