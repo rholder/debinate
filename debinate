@@ -17,7 +17,7 @@
 set -o errexit
 set -o pipefail
 
-readonly DEBINATE_VERSION=0.4.0-dev
+readonly DEBINATE_VERSION=0.4.0
 readonly PROVISIONING=.debinate
 readonly DEBINATE_BUILD=${PROVISIONING}/build
 readonly DEBINATE_TARGET=${PROVISIONING}/target
@@ -42,11 +42,13 @@ function usage () {
 Debinate ${DEBINATE_VERSION} - roll up your project into a Debian package
 
 Python:
+
   debinate init     - create and initialize a Debinate project structure in ${PROVISIONING}
   debinate package  - creates a .deb file from your project in ${DEBINATE_BUILD}
   debinate clean    - delete everything in the target, build, and cache folders
 
 Advanced:
+
   debinate generate - build a .deb from a directory
    -r, --root         root directory, e.g. ./root with ./root/usr/local/bin/thing inside
    -n, --name         project name (optional, default: current directory)
@@ -56,11 +58,12 @@ Advanced:
 
 Examples:
 
+  # everything you need to package up Python stuff
   debinate init
   debinate package
   debinate clean
 
-  # minimal default to build a .deb from the given root
+  # minimal default to build a .deb from the given root directory
   debinate generate -r ./build/root
 
   # kitchen sink, specify all the things!
