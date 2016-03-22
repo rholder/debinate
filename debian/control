@@ -1,0 +1,10 @@
+Package: debinate
+Version: 0.5.0
+License: Apache 2.0
+Vendor: rholder
+Architecture: all
+Maintainer: Ray Holder <ray.holder+debinate@gmail.com>
+Section: default
+Priority: extra
+Homepage: https://github.com/rholder/debinate
+Description: Roll up your projects into little standalone Debian packages.
