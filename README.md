@@ -1,10 +1,10 @@
-[![Build Status](http://img.shields.io/travis/rholder/debinate.svg)](https://travis-ci.org/rholder/debinate) [![Latest Version](http://img.shields.io/badge/latest-0.4.0-brightgreen.svg)](https://github.com/rholder/debinate/releases/tag/v0.4.0) [![License](http://img.shields.io/badge/license-apache%202-brightgreen.svg)](https://github.com/rholder/debinate/blob/master/LICENSE)
+[![Build Status](http://img.shields.io/travis/rholder/debinate.svg)](https://travis-ci.org/rholder/debinate) [![Latest Version](http://img.shields.io/badge/latest-0.5.0-brightgreen.svg)](https://github.com/rholder/debinate/releases/tag/v0.5.0) [![License](http://img.shields.io/badge/license-apache%202-brightgreen.svg)](https://github.com/rholder/debinate/blob/master/LICENSE)
 
 ##What is this?
 Debinate started out as a way to let you roll your very own Python projects with
 a bunch of weird dependencies into little standalone Debian packages you can
 install into `/opt`. It has since gained the ability to turn any directory into
-a Debian package with the addition of the `generate` command.
+a Debian package with the addition of the `build` command.
 
 It's not meant to be a highly customizable packager with every option available
 under the sun but instead to just hit the low-hanging fruit of packaging
@@ -15,14 +15,15 @@ Drop the latest version of `debinate` into your $PATH, set it executable, and
 make sure you own `/opt` if you plan to use the Python `package` command:
 
 ```bash
-sudo curl -o /usr/local/bin/debinate -L https://github.com/rholder/debinate/releases/download/v0.4.0/debinate && \
+sudo curl -o /usr/local/bin/debinate -L https://github.com/rholder/debinate/releases/download/v0.5.0/debinate && \
 sudo chmod +x /usr/local/bin/debinate && \
 sudo chown $USER:$USER /opt
 ```
+If you're on a Debian/Ubuntu-based system, there's a `.deb` package available [here](https://github.com/rholder/debinate/releases/latest/).
 
 ##Usage
 ```
-Debinate 0.4.0 - roll up your project into a Debian package
+Debinate 0.5.0 - roll up your project into a Debian package
 
 Python:
 
@@ -32,7 +33,7 @@ Python:
 
 Advanced:
 
-  debinate generate - build a .deb from a directory
+  debinate build - build a .deb from a directory
    -r, --root         root directory, e.g. ./root with ./root/usr/local/bin/thing inside
    -n, --name         project name (optional, default: current directory)
    -v, --version      project version (optional, default: 1.0.0)
@@ -47,10 +48,10 @@ Examples:
   debinate clean
 
   # minimal default to build a .deb from the given root directory
-  debinate generate -r ./build/root
+  debinate build -r ./build/root
 
   # kitchen sink, specify all the things!
-  debinate generate --root ./build/root --name potato --version 1.3.2 --debian-dir ./debian --output ./potato-123.deb
+  debinate build --root ./build/root --name potato --version 1.3.2 --debian-dir ./debian --output ./potato-123.deb
 ```
 
 ##Python
@@ -107,7 +108,7 @@ start over with:
 debinate clean
 ```
 
-See examples for uses of the `generate` command.
+See examples for uses of the `build` command.
 
 ##License
 Debinate is released under version 2.0 of the
