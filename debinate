@@ -17,7 +17,7 @@
 set -o errexit
 set -o pipefail
 
-readonly DEBINATE_VERSION=0.4.0
+readonly DEBINATE_VERSION=0.5.0
 readonly PROVISIONING=.debinate
 readonly DEBINATE_BUILD=${PROVISIONING}/build
 readonly DEBINATE_TARGET=${PROVISIONING}/target
@@ -49,7 +49,7 @@ Python:
 
 Advanced:
 
-  debinate generate - build a .deb from a directory
+  debinate build - build a .deb from a directory
    -r, --root         root directory, e.g. ./root with ./root/usr/local/bin/thing inside
    -n, --name         project name (optional, default: current directory)
    -v, --version      project version (optional, default: 1.0.0)
@@ -64,10 +64,10 @@ Examples:
   debinate clean
 
   # minimal default to build a .deb from the given root directory
-  debinate generate -r ./build/root
+  debinate build -r ./build/root
 
   # kitchen sink, specify all the things!
-  debinate generate --root ./build/root --name potato --version 1.3.2 --debian-dir ./debian --output ./potato-123.deb
+  debinate build --root ./build/root --name potato --version 1.3.2 --debian-dir ./debian --output ./potato-123.deb
 
 You can find the latest version and file bugs at https://github.com/rholder/debinate.
 
@@ -276,8 +276,8 @@ function add_trailing_slash () {
     echo "${the_value}"
 }
 
-# parse commandline arguments and generate a Debian package archive
-function generate_cli () {
+# parse commandline arguments and build a Debian package archive from a directory
+function build_cli () {
     # required, will fail if empty
     local deb_root=
 
@@ -516,9 +516,9 @@ function main () {
             package_python
             generate_deb_for_python "${PROJECT_NAME}" "${VERSION}" "${VENDOR}" "${PROVISIONING}" "${DEBINATE_BUILD}/${PROJECT_NAME}-${VERSION}.deb"
         ;;
-        generate)
+        build)
             shift 1
-            generate_cli "$@"
+            build_cli "$@"
         ;;
         *)
             usage

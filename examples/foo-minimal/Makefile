@@ -17,5 +17,5 @@ build:
 	@echo Build successful.
 
 package: build
-	@debinate generate --root $(BUILD_DIR)/root/ --version $(VERSION) --output $(BUILD_DIR)/$(NAME)-$(VERSION)-all.deb
+	@debinate build --root $(BUILD_DIR)/root/ --version $(VERSION) --output $(BUILD_DIR)/$(NAME)-$(VERSION)-all.deb
 	@echo Package successful.
