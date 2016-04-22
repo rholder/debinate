@@ -45,6 +45,7 @@ Python:
 
   debinate init     - create and initialize a Debinate project structure in ${PROVISIONING}
   debinate package  - creates a .deb file from your project in ${DEBINATE_BUILD}
+  debinate build    - kitchen sink, specify all the things!
   debinate clean    - delete everything in the target, build, and cache folders
 
 Advanced:
