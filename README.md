@@ -30,6 +30,8 @@ Python:
   debinate init     - create and initialize a Debinate project structure in .debinate
   debinate package  - creates a .deb file from your project in .debinate/build
   debinate build    - kitchen sink, specify all the things!
+  debinate prepack  - 1st half of 'debinate package': install python things
+  debinate postpack - 2nd half of 'debinate package': create the debian package
   debinate clean    - delete everything in the target, build, and cache folders
 
 Advanced:

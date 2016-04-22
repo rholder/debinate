@@ -17,7 +17,7 @@
 set -o errexit
 set -o pipefail
 
-readonly DEBINATE_VERSION=0.5.0
+readonly DEBINATE_VERSION=0.6.0
 readonly PROVISIONING=.debinate
 readonly DEBINATE_BUILD=${PROVISIONING}/build
 readonly DEBINATE_TARGET=${PROVISIONING}/target
@@ -45,6 +45,8 @@ Python:
 
   debinate init     - create and initialize a Debinate project structure in ${PROVISIONING}
   debinate package  - creates a .deb file from your project in ${DEBINATE_BUILD}
+  debinate prepack  - 1st half of 'debinate package': install python things
+  debinate postpack - 2nd half of 'debinate package': create the debian package
   debinate build    - kitchen sink, specify all the things!
   debinate clean    - delete everything in the target, build, and cache folders
 
@@ -515,6 +517,13 @@ function main () {
         package)
             sanity_check_python
             package_python
+            generate_deb_for_python "${PROJECT_NAME}" "${VERSION}" "${VENDOR}" "${PROVISIONING}" "${DEBINATE_BUILD}/${PROJECT_NAME}-${VERSION}.deb"
+        ;;
+        prepack)
+            sanity_check_python
+            package_python
+        ;;
+        postpack)
             generate_deb_for_python "${PROJECT_NAME}" "${VERSION}" "${VENDOR}" "${PROVISIONING}" "${DEBINATE_BUILD}/${PROJECT_NAME}-${VERSION}.deb"
         ;;
         build)
