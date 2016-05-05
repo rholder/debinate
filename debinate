@@ -17,7 +17,7 @@
 set -o errexit
 set -o pipefail
 
-readonly DEBINATE_VERSION=0.6.0
+readonly DEBINATE_VERSION=0.6.0-dev
 readonly PROVISIONING=.debinate
 readonly DEBINATE_BUILD=${PROVISIONING}/build
 readonly DEBINATE_TARGET=${PROVISIONING}/target
@@ -43,16 +43,15 @@ Debinate ${DEBINATE_VERSION} - roll up your project into a Debian package
 
 Python:
 
-  debinate init     - create and initialize a Debinate project structure in ${PROVISIONING}
-  debinate package  - creates a .deb file from your project in ${DEBINATE_BUILD}
-  debinate prepack  - 1st half of 'debinate package': install python things
-  debinate postpack - 2nd half of 'debinate package': create the debian package
-  debinate build    - kitchen sink, specify all the things!
-  debinate clean    - delete everything in the target, build, and cache folders
+  debinate init     - create and initialize a debinate project structure in ${PROVISIONING}
+  debinate prepare  - wipe target and build folders, regenerate their contents (optional, called by package if necessary)
+  debinate package  - creates a .deb from your project, calls prepare if necessary
+  debinate clear    - delete everything in target and build, leaving cache folder intact
+  debinate clean    - delete everything in target, build, and cache folders
 
 Advanced:
 
-  debinate build - build a .deb from a directory
+  debinate build    - build a .deb from a directory
    -r, --root         root directory, e.g. ./root with ./root/usr/local/bin/thing inside
    -n, --name         project name (optional, default: current directory)
    -v, --version      project version (optional, default: 1.0.0)
@@ -100,6 +99,7 @@ function package_python () {
     TARGET_VIRTUAL_ENV="${TARGET_PROJECT_DIR}/.virtualenv"
     echo Building ${PROJECT_NAME} - ${VERSION}
 
+    # TODO don't do this anymore if target/build directories exist
     rm -rf "${DEBINATE_TARGET}"
     rm -rf "${DEBINATE_BUILD}"
     mkdir -p "${DEBINATE_BUILD}"
@@ -160,17 +160,18 @@ function package_python () {
     rsync -a "${PROVISIONING}/root/" "${DEBINATE_TARGET}"
 }
 
-# delete everything that can be rebuilt
-function clean () {
+# delete build and target directories
+function wipe_build_target () {
     echo "Cleaning out ${DEBINATE_TARGET}"
     rm -rfv "${DEBINATE_TARGET}"
     echo "Cleaning out ${DEBINATE_BUILD}"
     rm -rfv "${DEBINATE_BUILD}"
+}
+
+# delete cache directory
+function wipe_cache () {
     echo "Cleaning out ${DEBINATE_CACHE}"
     rm -rfv "${DEBINATE_CACHE}"
-
-    echo "Done."
-    exit 0
 }
 
 # check that all the required programs are available
@@ -511,19 +512,22 @@ function main () {
         init)
             init
         ;;
+        clear)
+            wipe_build_target
+        ;;
         clean)
-            clean
+            wipe_build_target
+            wipe_cache
+        ;;
+        prepare)
+            sanity_check_python
+            wipe_build_target
+            package_python
         ;;
         package)
+            # TODO check for existance of build/target, skip package_python if exists
             sanity_check_python
             package_python
-            generate_deb_for_python "${PROJECT_NAME}" "${VERSION}" "${VENDOR}" "${PROVISIONING}" "${DEBINATE_BUILD}/${PROJECT_NAME}-${VERSION}.deb"
-        ;;
-        prepack)
-            sanity_check_python
-            package_python
-        ;;
-        postpack)
             generate_deb_for_python "${PROJECT_NAME}" "${VERSION}" "${VENDOR}" "${PROVISIONING}" "${DEBINATE_BUILD}/${PROJECT_NAME}-${VERSION}.deb"
         ;;
         build)
