@@ -11,10 +11,10 @@ under the sun but instead to just hit the low-hanging fruit of packaging
 applications to ease installation.
 
 ##Installation
-Drop the latest version of `debinate` into your $PATH, set it executable, and
-make sure you own `/opt` if you plan to use the Python `package` command:
 
 ### Linux
+Drop the latest version of `debinate` into your $PATH, set it executable, and
+make sure you own `/opt` if you plan to use the Python `package` command:
 ```bash
 sudo curl -o /usr/local/bin/debinate -L https://github.com/rholder/debinate/releases/download/v0.5.0/debinate && \
 sudo chmod +x /usr/local/bin/debinate && \
