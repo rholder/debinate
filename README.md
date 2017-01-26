@@ -1,4 +1,4 @@
-[![Build Status](http://img.shields.io/travis/rholder/debinate.svg)](https://travis-ci.org/rholder/debinate) [![Latest Version](http://img.shields.io/badge/latest-0.5.0-brightgreen.svg)](https://github.com/rholder/debinate/releases/tag/v0.5.0) [![License](http://img.shields.io/badge/license-apache%202-brightgreen.svg)](https://github.com/rholder/debinate/blob/master/LICENSE)
+[![Build Status](http://img.shields.io/travis/rholder/debinate.svg)](https://travis-ci.org/rholder/debinate) [![Latest Version](http://img.shields.io/badge/latest-0.6.0-brightgreen.svg)](https://github.com/rholder/debinate/releases/tag/v0.6.0) [![License](http://img.shields.io/badge/license-apache%202-brightgreen.svg)](https://github.com/rholder/debinate/blob/master/LICENSE)
 
 ##What is this?
 Debinate started out as a way to let you roll your very own Python projects with
@@ -16,7 +16,7 @@ applications to ease installation.
 Drop the latest version of `debinate` into your $PATH, set it executable, and
 make sure you own `/opt` if you plan to use the Python `package` command:
 ```bash
-sudo curl -o /usr/local/bin/debinate -L https://github.com/rholder/debinate/releases/download/v0.5.0/debinate && \
+sudo curl -o /usr/local/bin/debinate -L https://github.com/rholder/debinate/releases/download/v0.6.0/debinate && \
 sudo chmod +x /usr/local/bin/debinate && \
 sudo chown $USER:$USER /opt
 ```
@@ -30,7 +30,7 @@ brew install coreutils findutils gnu-tar
 Then drop the latest version of `debinate` into your $PATH, set it executable, and
 make sure you own `/opt` if you plan to use the Python `package` command:
 ```bash
-sudo curl -o /usr/local/bin/debinate -L https://github.com/rholder/debinate/releases/download/v0.5.0/debinate && \
+sudo curl -o /usr/local/bin/debinate -L https://github.com/rholder/debinate/releases/download/v0.6.0/debinate && \
 sudo chmod +x /usr/local/bin/debinate && \
 sudo chown $USER:staff /opt
 ```
@@ -38,17 +38,19 @@ I would consider it experimental because projects with Python dependencies that 
 
 ##Usage
 ```
-Debinate 0.5.0 - roll up your project into a Debian package
+Debinate 0.6.0 - roll up your project into a Debian package
 
 Python:
 
-  debinate init     - create and initialize a Debinate project structure in .debinate
-  debinate package  - creates a .deb file from your project in .debinate/build
-  debinate clean    - delete everything in the target, build, and cache folders
+  debinate init     - create and initialize a debinate project structure in .debinate
+  debinate prepare  - wipe target and build folders, regenerate their contents (optional, called by package if necessary)
+  debinate package  - creates a .deb from your project, calls prepare if necessary
+  debinate clear    - delete everything in target and build, leaving cache folder intact
+  debinate clean    - delete everything in target, build, and cache folders
 
 Advanced:
 
-  debinate build - build a .deb from a directory
+  debinate build    - build a .deb from a directory
    -r, --root         root directory, e.g. ./root with ./root/usr/local/bin/thing inside
    -n, --name         project name (optional, default: current directory)
    -v, --version      project version (optional, default: 1.0.0)

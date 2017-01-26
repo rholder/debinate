@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2014-2016 Ray Holder
+# Copyright 2014-2017 Ray Holder
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 set -o errexit
 set -o pipefail
 
-readonly DEBINATE_VERSION=0.6.0-dev
+readonly DEBINATE_VERSION=0.6.0
 readonly PROVISIONING=.debinate
 readonly DEBINATE_BUILD=${PROVISIONING}/build
 readonly DEBINATE_TARGET=${PROVISIONING}/target
