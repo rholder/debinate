@@ -1,6 +1,6 @@
 [![Build Status](http://img.shields.io/travis/rholder/debinate.svg)](https://travis-ci.org/rholder/debinate) [![Latest Version](http://img.shields.io/badge/latest-0.6.0-brightgreen.svg)](https://github.com/rholder/debinate/releases/tag/v0.6.0) [![License](http://img.shields.io/badge/license-apache%202-brightgreen.svg)](https://github.com/rholder/debinate/blob/master/LICENSE)
 
-##What is this?
+## What is this?
 Debinate started out as a way to let you roll your very own Python projects with
 a bunch of weird dependencies into little standalone Debian packages you can
 install into `/opt`. It has since gained the ability to turn any directory into
@@ -10,7 +10,7 @@ It's not meant to be a highly customizable packager with every option available
 under the sun but instead to just hit the low-hanging fruit of packaging
 applications to ease installation.
 
-##Installation
+## Installation
 
 ### Linux
 Drop the latest version of `debinate` into your $PATH, set it executable, and
@@ -36,7 +36,7 @@ sudo chown $USER:staff /opt
 ```
 I would consider it experimental because projects with Python dependencies that are compiled will only work on OSX. However, if your project uses only pure Python dependencies, then you'll likely be fine building on OSX and running on Debian/Ubuntu. Also of note, on OSX you can still turn any directory full of stuff into a Debian package with the `build` command.
 
-##Usage
+## Usage
 ```
 Debinate 0.6.0 - roll up your project into a Debian package
 
@@ -71,7 +71,7 @@ Examples:
   debinate build --root ./build/root --name potato --version 1.3.2 --debian-dir ./debian --output ./potato-123.deb
 ```
 
-##Python
+## Python
 For Python, create a `setup.py` for your project that isn't too crazy. If you
 can install it via a `pip install ./` then you're probably good to go. Here's
 one to get you started that has a bunch of stuff in it:
@@ -127,6 +127,6 @@ debinate clean
 
 See examples for uses of the `build` command.
 
-##License
+## License
 Debinate is released under version 2.0 of the
 [Apache License](http://www.apache.org/licenses/LICENSE-2.0).
