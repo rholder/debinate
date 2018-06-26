@@ -1,4 +1,4 @@
-[![Build Status](http://img.shields.io/travis/rholder/debinate.svg)](https://travis-ci.org/rholder/debinate) [![Latest Version](http://img.shields.io/badge/latest-0.6.0-brightgreen.svg)](https://github.com/rholder/debinate/releases/tag/v0.6.0) [![License](http://img.shields.io/badge/license-apache%202-brightgreen.svg)](https://github.com/rholder/debinate/blob/master/LICENSE)
+[![Build Status](http://img.shields.io/travis/rholder/debinate.svg)](https://travis-ci.org/rholder/debinate) [![Latest Version](http://img.shields.io/badge/latest-0.6.1-brightgreen.svg)](https://github.com/rholder/debinate/releases/tag/v0.6.1) [![License](http://img.shields.io/badge/license-apache%202-brightgreen.svg)](https://github.com/rholder/debinate/blob/master/LICENSE)
 
 ## What is this?
 Debinate started out as a way to let you roll your very own Python projects with
@@ -16,7 +16,7 @@ applications to ease installation.
 Drop the latest version of `debinate` into your $PATH, set it executable, and
 make sure you own `/opt` if you plan to use the Python `package` command:
 ```bash
-sudo curl -o /usr/local/bin/debinate -L https://github.com/rholder/debinate/releases/download/v0.6.0/debinate && \
+sudo curl -o /usr/local/bin/debinate -L https://github.com/rholder/debinate/releases/download/v0.6.1/debinate && \
 sudo chmod +x /usr/local/bin/debinate && \
 sudo chown $USER:$USER /opt
 ```
@@ -30,7 +30,7 @@ brew install coreutils findutils gnu-tar
 Then drop the latest version of `debinate` into your $PATH, set it executable, and
 make sure you own `/opt` if you plan to use the Python `package` command:
 ```bash
-sudo curl -o /usr/local/bin/debinate -L https://github.com/rholder/debinate/releases/download/v0.6.0/debinate && \
+sudo curl -o /usr/local/bin/debinate -L https://github.com/rholder/debinate/releases/download/v0.6.1/debinate && \
 sudo chmod +x /usr/local/bin/debinate && \
 sudo chown $USER:staff /opt
 ```
@@ -38,7 +38,7 @@ I would consider it experimental because projects with Python dependencies that 
 
 ## Usage
 ```
-Debinate 0.6.0 - roll up your project into a Debian package
+Debinate 0.6.1 - roll up your project into a Debian package
 
 Python:
 
