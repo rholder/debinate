@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2014-2017 Ray Holder
+# Copyright 2014-2018 Ray Holder
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 set -o errexit
 set -o pipefail
 
-readonly DEBINATE_VERSION=0.6.0
+readonly DEBINATE_VERSION=0.6.1
 readonly PROVISIONING=.debinate
 readonly DEBINATE_BUILD=${PROVISIONING}/build
 readonly DEBINATE_TARGET=${PROVISIONING}/target
@@ -373,6 +373,21 @@ function build_cli () {
     generate_deb "${deb_root}" "${project_name}" "${project_version}" "${debian_dir}" "${deb_output}"
 }
 
+# clean up ONLY a debinate.tmp-prefixed directory, nothing else
+function safe_cleanup () {
+    local dir_basename=$(basename "$1")
+    case "${dir_basename}" in
+        debinate.tmp*)
+            rm -rf "$1"
+            ;;
+        *)
+            # anything else is considered an error
+            echo "An error occurred while trying to delete $1"
+            exit 1
+            ;;
+    esac
+}
+
 # generate a Debian package archive
 function generate_deb () {
     local deb_root=$1
@@ -381,9 +396,13 @@ function generate_deb () {
     local debian_custom_dir=$4
     local deb_output=$5
 
-    local tmp_dir=$(${MKTEMP} -d)
+    # use $TMPDIR if set, else /tmp, prefix directory with debinate.tmp
+    local tmp_dir=$(${MKTEMP} --tmpdir -d debinate.tmp.XXXXXXXXXX)
     local build_dir="${tmp_dir}/build"
     local target_dir="${tmp_dir}/target"
+
+    # register clean up trap
+    trap "{ safe_cleanup \"${tmp_dir}\"; }" EXIT
 
     # control archive files are staged here
     local debian_dir="${build_dir}/debian"
