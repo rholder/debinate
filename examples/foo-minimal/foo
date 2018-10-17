@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+echo "This project prints foo and exits"
+

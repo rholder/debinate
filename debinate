@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2014-2015 Ray Holder
+# Copyright 2014-2018 Ray Holder
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,11 +17,11 @@
 set -o errexit
 set -o pipefail
 
-readonly DEBINATE=${0##*/}
-readonly DEBINATE_VERSION=0.2.2
+readonly DEBINATE_VERSION=0.6.1
 readonly PROVISIONING=.debinate
-readonly BUILD=${PROVISIONING}/build
-readonly TARGET=${PROVISIONING}/target
+readonly DEBINATE_BUILD=${PROVISIONING}/build
+readonly DEBINATE_TARGET=${PROVISIONING}/target
+readonly DEBINATE_CACHE=${PROVISIONING}/cache
 
 # install prefix defaults to /opt if unset
 readonly DEBINATE_INSTALL_PREFIX="${DEBINATE_INSTALL_PREFIX:-/opt}"
@@ -39,11 +39,37 @@ readonly DEBINATE_PYTHON="${DEBINATE_PYTHON:-$(which python)}"
 # print usage information and exit
 function usage () {
         cat << EOF
-Debinate ${DEBINATE_VERSION} - roll up your Python as a Debian package
+Debinate ${DEBINATE_VERSION} - roll up your project into a Debian package
 
-  ${DEBINATE} init    - create and initialize a Debinate project structure in ${PROVISIONING}
-  ${DEBINATE} package - creates a .deb file from your project in ${BUILD}
-  ${DEBINATE} clean   - delete everything in the ${TARGET} and ${BUILD} folders
+Python:
+
+  debinate init     - create and initialize a debinate project structure in ${PROVISIONING}
+  debinate prepare  - wipe target and build folders, regenerate their contents (optional, called by package if necessary)
+  debinate package  - creates a .deb from your project, calls prepare if necessary
+  debinate clear    - delete everything in target and build, leaving cache folder intact
+  debinate clean    - delete everything in target, build, and cache folders
+
+Advanced:
+
+  debinate build    - build a .deb from a directory
+   -r, --root         root directory, e.g. ./root with ./root/usr/local/bin/thing inside
+   -n, --name         project name (optional, default: current directory)
+   -v, --version      project version (optional, default: 1.0.0)
+   -d, --debian-dir   directory that contains debian package files, like control (optional)
+   -o, --output       output .deb file location (optional, default: "./name-version.deb")
+
+Examples:
+
+  # everything you need to package up Python stuff
+  debinate init
+  debinate package
+  debinate clean
+
+  # minimal default to build a .deb from the given root directory
+  debinate build -r ./build/root
+
+  # kitchen sink, specify all the things!
+  debinate build --root ./build/root --name potato --version 1.3.2 --debian-dir ./debian --output ./potato-123.deb
 
 You can find the latest version and file bugs at https://github.com/rholder/debinate.
 
@@ -59,7 +85,7 @@ function init () {
     fi
     echo "Initializing project..."
     mkdir -p "${PROVISIONING}/root"
-    mkdir -p "${BUILD}"
+    mkdir -p "${DEBINATE_BUILD}"
     echo "python" > "${PROVISIONING}/depends"
     echo -e "#!/bin/bash\n\necho Debinate package installed." > "${PROVISIONING}/after_install.sh"
     echo -e "#!/bin/bash\n\necho Debinate package removed." > "${PROVISIONING}/before_remove.sh"
@@ -68,71 +94,114 @@ function init () {
 }
 
 # create the target Python package with a virtualenv
-function package () {
-    # use /tmp/pip_cache if unspecified
-    if [ -z "${PIP_CACHE}" ]; then
-        PIP_CACHE="/tmp/pip_cache"
-    fi
-
+function package_python () {
     TARGET_PROJECT_DIR="${DEBINATE_INSTALL_PREFIX}/${PROJECT_NAME}"
     TARGET_VIRTUAL_ENV="${TARGET_PROJECT_DIR}/.virtualenv"
     echo Building ${PROJECT_NAME} - ${VERSION}
 
-    mkdir -p "${BUILD}"
-    rm -rf "${TARGET}"
+    echo "Clearing any virtualenv in ${TARGET_VIRTUAL_ENV}"
+    rm -rf "${TARGET_VIRTUAL_ENV}"
 
-    if [ -z "${USE_VIRTUAL_ENV_CACHE}" ]; then
-        echo "Clearing any virtualenv in ${TARGET_VIRTUAL_ENV}"
-        rm -rf "${TARGET_VIRTUAL_ENV}"
+    if [ -f "requirements.txt" ]; then
+        echo "Found requirements.txt, installing dependencies in order first..."
+        mkdir -p "${DEBINATE_CACHE}"
+        local cache_key=($(md5sum requirements.txt))
+        local cache_file="${DEBINATE_CACHE}/virtualenv-${cache_key[0]}.tar.gz"
+        if [ -f "${cache_file}" ]; then
+            echo "Extracting cache file to ${TARGET_PROJECT_DIR}..."
+            mkdir -p "${TARGET_PROJECT_DIR}"
+            ${TAR} xzf "${cache_file}" -C "${TARGET_PROJECT_DIR}"
+            source "${TARGET_VIRTUAL_ENV}/bin/activate"
+        else
+            echo "Creating new virtualenv in ${TARGET_VIRTUAL_ENV}..."
+            mkdir -p "${TARGET_VIRTUAL_ENV}"
+            virtualenv --python="${DEBINATE_PYTHON}" --distribute "${TARGET_VIRTUAL_ENV}"
+            source "${TARGET_VIRTUAL_ENV}/bin/activate"
+
+            # TODO don't hardcode distribute version, add as parameter
+            pip install distribute==0.7.3
+            DONE_REQ=false
+            until $DONE_REQ; do
+                read || DONE_REQ=true
+                if [ -n "$REPLY" ]; then
+                    pip install $REPLY
+                fi
+            done <requirements.txt
+
+            # tar up the virtualenv before installing the project
+            echo "Saving virtualenv cache to ${cache_file}..."
+            ${TAR} czf "${cache_file}" -C "${TARGET_PROJECT_DIR}" ".virtualenv"
+        fi
     else
-        echo "Using existing virtualenv in ${TARGET_VIRTUAL_ENV}"
+        echo "No requirements.txt, defaulting to pip install"
+        echo "Creating new virtualenv in ${TARGET_VIRTUAL_ENV}..."
+        mkdir -p "${TARGET_VIRTUAL_ENV}"
+        virtualenv --python="${DEBINATE_PYTHON}" --distribute "${TARGET_VIRTUAL_ENV}"
+        source "${TARGET_VIRTUAL_ENV}/bin/activate"
     fi
 
-    mkdir -p "${TARGET_VIRTUAL_ENV}"
-    virtualenv --python="${DEBINATE_PYTHON}" --distribute "${TARGET_VIRTUAL_ENV}"
-    source "${TARGET_VIRTUAL_ENV}/bin/activate"
-
-    # use the cache unless you like redownloading things
-    # TODO don't hardcode distribute version, add as parameter
-    pip install --download-cache "${PIP_CACHE}" distribute==0.7.3
-    pip install --download-cache "${PIP_CACHE}" ./
+    pip install .
     deactivate
 
-    mkdir -p "${TARGET}${TARGET_PROJECT_DIR}"
-    if [ -z "${USE_VIRTUAL_ENV_CACHE}" ]; then
-        echo "Moving virtualenv"
-        mv "${TARGET_VIRTUAL_ENV}/" "${TARGET}${TARGET_PROJECT_DIR}"
-    else
-        echo "Using cached virtualenv from ${TARGET_VIRTUAL_ENV}"
-        rsync -av "${TARGET_VIRTUAL_ENV}/" "${TARGET}${TARGET_PROJECT_DIR}"
-    fi
+    mkdir -p "${DEBINATE_TARGET}${TARGET_PROJECT_DIR}"
+    echo "Moving virtualenv"
+    mv "${TARGET_VIRTUAL_ENV}/" "${DEBINATE_TARGET}${TARGET_PROJECT_DIR}"
 
-    # clean up the original project dir when not using cached virtualenv
-    if [ -z "${USE_VIRTUAL_ENV_CACHE}" ]; then
-        echo "Cleaning up target project directory ${TARGET_PROJECT_DIR}"
-        rmdir "${TARGET_PROJECT_DIR}"
-    fi
+    # clean up the original project dir
+    echo "Cleaning up target project directory ${TARGET_PROJECT_DIR}"
+    rmdir "${TARGET_PROJECT_DIR}"
 
     # copy over root folder mirror, anything you needed
-    rsync -av "${PROVISIONING}/root/" "${TARGET}"
+    rsync -a "${PROVISIONING}/root/" "${DEBINATE_TARGET}"
 }
 
-# delete everything that can be rebuilt
-function clean () {
-    echo "Cleaning out ${TARGET}"
-    rm -rfv ${TARGET}
-    echo "Cleaning out ${BUILD}"
-    rm -rfv ${BUILD}
-    echo "Done."
-    exit 0
+# delete build and target directories
+function wipe_build_target () {
+    echo "Cleaning out ${DEBINATE_TARGET}"
+    rm -rfv "${DEBINATE_TARGET}"
+    echo "Cleaning out ${DEBINATE_BUILD}"
+    rm -rfv "${DEBINATE_BUILD}"
+}
+
+# delete cache directory
+function wipe_cache () {
+    echo "Cleaning out ${DEBINATE_CACHE}"
+    rm -rfv "${DEBINATE_CACHE}"
+}
+
+# wipe build and target, regenerate everything in the target folder
+function prepare () {
+    sanity_check_python
+    wipe_build_target
+    package_python
 }
 
 # check that all the required programs are available
 function check_environment () {
-    local programs=(ar find sort xargs tar md5sum virtualenv)
-    for program in "${programs[@]}"; do
-        check_program_exists "$program"
-    done
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # Mac OSX
+        local programs=(ar gfind sort gxargs gtar gmktemp sed gmd5sum virtualenv rsync)
+        for program in "${programs[@]}"; do
+            check_program_exists "$program"
+        done
+
+        # alias gnu versions for OSX
+        MD5SUM=gmd5sum
+        FIND=gfind
+        TAR=gtar
+        XARGS=gxargs
+        MKTEMP=gmktemp
+    else
+        local programs=(ar find sort xargs tar mktemp sed md5sum virtualenv rsync)
+        for program in "${programs[@]}"; do
+            check_program_exists "$program"
+        done
+        MD5SUM=md5sum
+        FIND=find
+        TAR=tar
+        XARGS=xargs
+        MKTEMP=mktemp
+    fi
 }
 
 # bail out if given program doesn't exist
@@ -147,13 +216,13 @@ function check_program_exists () {
 function generate_md5sums () {
     local target_dir="$1"
     pushd "${target_dir}" > /dev/null
-    find . -type f -printf '%P\0' | LC_ALL=C sort -z | xargs -r0 md5sum
+    ${FIND} . -type f -printf '%P\0' | LC_ALL=C sort -z | ${XARGS} -r0 ${MD5SUM}
     popd > /dev/null
 }
 
 # generate control file dependency line from newline separated file
 function generate_depends () {
-    sed '/^\s*$/d' "$1" | xargs | sed 's/ /, /g'
+    sed '/^\s*$/d' "$1" | ${XARGS} | sed 's/ /, /g'
 }
 
 # generate a minimal Debian control file
@@ -168,7 +237,7 @@ Package: ${project_name}
 Version: ${version}
 License: unknown
 Vendor: ${vendor}
-Architecture: amd64
+Architecture: all
 Maintainer: <root@localhost>
 Depends: ${depends}
 Section: default
@@ -188,8 +257,198 @@ function copy_script () {
     fi
 }
 
+# fail if the given value is empty with the given message
+function fail_if_empty () {
+    local the_value=$1
+    local message_when_empty=$2
+
+    if [ -z "${the_value}" ]; then
+        echo "${message_when_empty}"
+        exit 1
+    fi
+}
+
+# add a trailing slash to the given value or leave it alone if it doesn't have one
+function add_trailing_slash () {
+    local the_value="$1"
+
+    case "${the_value}" in
+        */) # do nothing if already ends in /
+        ;;
+        *)  # add a / if it doesn't end with one
+            the_value="${the_value}/"
+        ;;
+    esac
+    echo "${the_value}"
+}
+
+# parse commandline arguments and build a Debian package archive from a directory
+function build_cli () {
+    # required, will fail if empty
+    local deb_root=
+
+    # optional, defaults provided
+    local project_name=${PROJECT_NAME}
+    local project_version="1.0.0"
+    local deb_output="${project_name}-${project_version}.deb"
+
+    # this can be empty
+    local debian_dir=
+
+    while :; do
+        case $1 in
+            -h|-\?|--help)   # Call a "usage" function to display a synopsis, then exit.
+                usage
+                exit 0
+                ;;
+            -r|--root)
+                if [ -n "$2" ]; then
+                    deb_root=$2
+                    shift 2
+                    continue
+                else
+                    printf 'ERROR: "--root" requires a non-empty option argument.\n' >&2
+                    exit 1
+                fi
+                ;;
+            -n|--name)       # Takes an option argument, ensuring it has been specified.
+                if [ -n "$2" ]; then
+                    project_name=$2
+                    shift 2
+                    continue
+                else
+                    printf 'ERROR: "--name" requires a non-empty option argument.\n' >&2
+                    exit 1
+                fi
+                ;;
+            -v|--version)
+                if [ -n "$2" ]; then
+                    project_version=$2
+                    shift 2
+                    continue
+                else
+                    printf 'ERROR: "--version" requires a non-empty option argument.\n' >&2
+                    exit 1
+                fi
+                ;;
+            -d|--debian-dir)
+                if [ -n "$2" ]; then
+                    debian_dir=$2
+                    shift 2
+                    continue
+                else
+                    printf 'ERROR: "--debian-dir" requires a non-empty option argument.\n' >&2
+                    exit 1
+                fi
+                ;;
+            -o|--output)
+                if [ -n "$2" ]; then
+                    deb_output=$2
+                    shift 2
+                    continue
+                else
+                    printf 'ERROR: "--output" requires a non-empty option argument.\n' >&2
+                    exit 1
+                fi
+                ;;
+            --)              # End of all options.
+                shift
+                break
+                ;;
+            -?*)
+                printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
+                ;;
+            *)               # Default case: If no more options then break out of the loop.
+                break
+        esac
+
+        shift
+    done
+
+    fail_if_empty "${deb_root}" "--root cannot be empty"
+    fail_if_empty "${project_name}" "--name cannot be empty"
+    fail_if_empty "${project_version}" "--version cannot be empty"
+    fail_if_empty "${deb_output}" "--output cannot be empty"
+
+    generate_deb "${deb_root}" "${project_name}" "${project_version}" "${debian_dir}" "${deb_output}"
+}
+
+# clean up ONLY a debinate.tmp-prefixed directory, nothing else
+function safe_cleanup () {
+    local dir_basename=$(basename "$1")
+    case "${dir_basename}" in
+        debinate.tmp*)
+            rm -rf "$1"
+            ;;
+        *)
+            # anything else is considered an error
+            echo "An error occurred while trying to delete $1"
+            exit 1
+            ;;
+    esac
+}
+
 # generate a Debian package archive
 function generate_deb () {
+    local deb_root=$1
+    local project_name=$2
+    local project_version=$3
+    local debian_custom_dir=$4
+    local deb_output=$5
+
+    # use $TMPDIR if set, else /tmp, prefix directory with debinate.tmp
+    local tmp_dir=$(${MKTEMP} --tmpdir -d debinate.tmp.XXXXXXXXXX)
+    local build_dir="${tmp_dir}/build"
+    local target_dir="${tmp_dir}/target"
+
+    # register clean up trap
+    trap "{ safe_cleanup \"${tmp_dir}\"; }" EXIT
+
+    # control archive files are staged here
+    local debian_dir="${build_dir}/debian"
+    mkdir -p "${build_dir}"
+    mkdir -p "${target_dir}"
+    mkdir -p "${debian_dir}"
+
+    # rsync needs a / at the end to make sure things copy over without the source dir
+    deb_root=$(add_trailing_slash "${deb_root}")
+
+    # copy over root folder mirror, anything you needed
+    rsync -a "${deb_root}" "${target_dir}"
+
+    # check for debian_custom_dir
+    if [ -d "${debian_custom_dir}" ]; then
+        debian_custom_dir=$(add_trailing_slash "${debian_custom_dir}")
+        rsync -a "${debian_custom_dir}" "${debian_dir}"
+    fi
+
+    # create Debian control archive
+    generate_md5sums "${target_dir}" > "${debian_dir}/md5sums"
+
+    # use an existing Debian control file if it exists
+    if [ ! -f "${debian_dir}/control" ]; then
+        # otherwise generate one
+        generate_control "${project_name}" "${project_version}" "unknown" "" > "${debian_dir}/control"
+    fi
+
+    pushd "${debian_dir}" > /dev/null
+    ${TAR} czf "${build_dir}/control.tar.gz" --numeric-owner --owner=0 --group=0 * 2>/dev/null
+    popd > /dev/null
+
+    # create Debian data archive from target dir
+    ${TAR} czf "${build_dir}/data.tar.gz" --numeric-owner --owner=0 --group=0 -C "${target_dir}" .
+
+    # create Debian version file
+    echo "2.0" > "${build_dir}/debian-binary"
+
+    # create final Debian package
+    ar cr "${deb_output}" "${build_dir}/debian-binary" "${build_dir}/control.tar.gz" "${build_dir}/data.tar.gz"
+    echo "Debian archive ${deb_output} was generated successfully."
+}
+
+# TODO this will eventually roll into generate_deb, keeping for now to minimize backward compatible changes
+# generate a Debian package archive
+function generate_deb_for_python () {
     local project_name=$1
     local version=$2
     local vendor=$3
@@ -221,10 +480,10 @@ function generate_deb () {
         generate_control "${project_name}" "${version}" "${vendor}" "$(generate_depends ${depends_file})" > "${debian_dir}/control"
     fi
 
-    tar czf "${build_dir}/control.tar.gz" --numeric-owner --owner=0 --group=0 -C "${debian_dir}" --ignore-failed-read control md5sums preinst postinst prerm postrm 2>/dev/null
+    ${TAR} czf "${build_dir}/control.tar.gz" --numeric-owner --owner=0 --group=0 -C "${debian_dir}" --ignore-failed-read control md5sums preinst postinst prerm postrm 2>/dev/null
 
     # create Debian data archive from target dir
-    tar czf "${build_dir}/data.tar.gz" --numeric-owner --owner=0 --group=0 -C "${target_dir}" .
+    ${TAR} czf "${build_dir}/data.tar.gz" --numeric-owner --owner=0 --group=0 -C "${target_dir}" .
 
     # create Debian version file
     echo "2.0" > "${build_dir}/debian-binary"
@@ -235,7 +494,7 @@ function generate_deb () {
 }
 
 # run sanity checks to validate project structure
-function sanity_check_package () {
+function sanity_check_python () {
     # sanity check existence of .debinate
     if [ ! -d "${PROVISIONING}" ]; then
         echo "Could not find ${PROVISIONING} directory."
@@ -261,7 +520,7 @@ function sanity_check_package () {
     fi
 
     # sanity check existence of existing final .deb
-    local final_project_deb="${BUILD}/${PROJECT_NAME}-${VERSION}.deb"
+    local final_project_deb="${DEBINATE_BUILD}/${PROJECT_NAME}-${VERSION}.deb"
     if [ -f "${final_project_deb}" ]; then
         echo "${final_project_deb} already exists."
         exit 1
@@ -274,21 +533,35 @@ function main () {
         init)
             init
         ;;
+        clear)
+            wipe_build_target
+        ;;
         clean)
-            clean
+            wipe_build_target
+            wipe_cache
+        ;;
+        prepare)
+            prepare
         ;;
         package)
-            sanity_check_package
-            package
-            generate_deb "${PROJECT_NAME}" "${VERSION}" "${VENDOR}" "${PROVISIONING}" "${BUILD}/${PROJECT_NAME}-${VERSION}.deb"
+            # check for existence of target, skip prepare if already exists
+            if [ ! -d "${DEBINATE_TARGET}" ]; then
+                prepare
+            fi
+            generate_deb_for_python "${PROJECT_NAME}" "${VERSION}" "${VENDOR}" "${PROVISIONING}" "${DEBINATE_BUILD}/${PROJECT_NAME}-${VERSION}.deb"
+        ;;
+        build)
+            shift 1
+            build_cli "$@"
         ;;
         *)
             usage
+            exit 1
         ;;
     esac
 }
 
 # skip running the main function, suitable for sourcing, testing, etc.
 if [ "$1" != "--skip-main" ]; then
-    main $1
+    main "$@"
 fi
