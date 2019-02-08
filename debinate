@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2014-2018 Ray Holder
+# Copyright 2014-2019 Ray Holder
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -118,8 +118,6 @@ function package_python () {
             virtualenv --python="${DEBINATE_PYTHON}" --distribute "${TARGET_VIRTUAL_ENV}"
             source "${TARGET_VIRTUAL_ENV}/bin/activate"
 
-            # TODO don't hardcode distribute version, add as parameter
-            pip install distribute==0.7.3
             DONE_REQ=false
             until $DONE_REQ; do
                 read || DONE_REQ=true
