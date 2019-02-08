@@ -17,7 +17,7 @@
 set -o errexit
 set -o pipefail
 
-readonly DEBINATE_VERSION=0.6.1
+readonly DEBINATE_VERSION=0.7.0
 readonly PROVISIONING=.debinate
 readonly DEBINATE_BUILD=${PROVISIONING}/build
 readonly DEBINATE_TARGET=${PROVISIONING}/target
