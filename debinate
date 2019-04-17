@@ -18,7 +18,9 @@ set -o errexit
 set -o pipefail
 
 readonly DEBINATE_VERSION=0.7.0
-readonly PROVISIONING=.debinate
+
+# provisioning directory defaults to .debinate if unset
+readonly PROVISIONING="${DEBINATE_PROVISIONING:-.debinate}"
 readonly DEBINATE_BUILD=${PROVISIONING}/build
 readonly DEBINATE_TARGET=${PROVISIONING}/target
 readonly DEBINATE_CACHE=${PROVISIONING}/cache
